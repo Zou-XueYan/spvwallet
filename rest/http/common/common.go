@@ -15,7 +15,7 @@ const (
 	GETALLUTXOS         = "/api/v1/getallutxos"
 	BROADCASTTX         = "/api/v1/broadcasttx"
 	ROLLBACK            = "/api/v1/rollback"
-	DELUTXO = "/api/v1/delutxo"
+	DELUTXO             = "/api/v1/delutxo"
 )
 
 const (
@@ -29,7 +29,7 @@ const (
 	ACTION_GETALLUTXOS         = "getallutxos"
 	ACTION_BROADCASTTX         = "broadcasttx"
 	ACTION_ROLLBACK            = "rollback"
-	ACTION_DELUTXO = "delutxo"
+	ACTION_DELUTXO             = "delutxo"
 )
 
 type Response struct {

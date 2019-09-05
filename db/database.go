@@ -10,7 +10,7 @@ import (
 )
 
 // This database is mostly just an example implementation used for testing.
-// End users are free to user their own database.
+// End users are free to use their own database.
 type SQLiteDatastore struct {
 	keys           wallet.Keys
 	utxos          wallet.Utxos

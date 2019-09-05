@@ -47,6 +47,24 @@ var (
 		Usage: "the address that spv client need to watch for maintaining utxo set.",
 		Value: "",
 	}
+
+	AlliaConfigFile = cli.StringFlag{
+		Name:  "alliaconfig",
+		Usage: "the config file of alliance service.",
+		Value: "./allia_conf.json",
+	}
+
+	GoMaxProcs = cli.IntFlag{
+		Name:  "gomaxprocs",
+		Usage: "max number of cpu core that runtime can use.",
+		Value: 4,
+	}
+
+	RunRest = cli.IntFlag{
+		Name:  "rest",
+		Usage: "1: start the restful service. 2: not start",
+		Value: 1,
+	}
 )
 
 //GetFlagName deal with short flag, and return the flag name whether flag name have short name

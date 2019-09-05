@@ -32,10 +32,11 @@ var OrphanHeaderError = errors.New("header does not extend any known headers")
 
 // Wrapper around Headers implementation that handles all blockchain operations
 type Blockchain struct {
-	lock        *sync.Mutex
-	params      *chaincfg.Params
-	db          Headers
-	crationDate time.Time
+	lock         *sync.Mutex
+	params       *chaincfg.Params
+	db           Headers
+	crationDate  time.Time
+	HeaderUpdate chan uint32
 }
 
 func NewBlockchain(filePath string, walletCreationDate time.Time, params *chaincfg.Params) (*Blockchain, error) {
@@ -44,10 +45,11 @@ func NewBlockchain(filePath string, walletCreationDate time.Time, params *chainc
 		return nil, err
 	}
 	b := &Blockchain{
-		lock:        new(sync.Mutex),
-		params:      params,
-		db:          hdb,
-		crationDate: walletCreationDate,
+		lock:         new(sync.Mutex),
+		params:       params,
+		db:           hdb,
+		crationDate:  walletCreationDate,
+		HeaderUpdate: make(chan uint32, 100),
 	}
 
 	h, err := b.db.Height()
@@ -127,6 +129,10 @@ func (b *Blockchain) CommitHeader(header wire.BlockHeader) (bool, *StoredHeader,
 	}, newTip)
 	if err != nil {
 		return newTip, commonAncestor, 0, err
+	}
+
+	if newTip {
+		b.HeaderUpdate <- newHeight
 	}
 	return newTip, commonAncestor, newHeight, nil
 }

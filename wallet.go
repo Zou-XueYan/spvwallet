@@ -422,7 +422,9 @@ func (w *SPVWallet) AddWatchedScript(script []byte) error {
 	err := w.txstore.WatchedScripts().Put(script)
 	w.txstore.PopulateAdrs()
 
-	w.wireService.MsgChan() <- updateFiltersMsg{}
+	if w.running {
+		w.wireService.MsgChan() <- updateFiltersMsg{}
+	}
 	return err
 }
 

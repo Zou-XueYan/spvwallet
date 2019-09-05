@@ -62,7 +62,7 @@ func (this *restServer) registryRestServerAction(web Web) {
 		common.GETFEEPERBYTE:       {name: common.ACTION_GETFEEPERBYTE, handler: web.GetFeePerByte},
 		common.BROADCASTTX:         {name: common.ACTION_BROADCASTTX, handler: web.BroadcastTx},
 		common.ROLLBACK:            {name: common.ACTION_ROLLBACK, handler: web.Rollback},
-		common.DELUTXO: {name: common.ACTION_DELUTXO, handler: web.DelUtxo},
+		common.DELUTXO:             {name: common.ACTION_DELUTXO, handler: web.DelUtxo},
 	}
 
 	getMethodMap := map[string]Action{

@@ -554,7 +554,7 @@ func (serv *Service) DelUtxo(params map[string]interface{}) map[string]interface
 		hash, _ := chainhash.NewHashFromStr(req.Op.Hash)
 		err := serv.wallet.GetTxStore().Utxos().Delete(wallet.Utxo{
 			Op: wire.OutPoint{
-				Hash: *hash,
+				Hash:  *hash,
 				Index: req.Op.Index,
 			},
 		})

@@ -260,6 +260,7 @@ func (h *HeaderDB) GetPreviousHeader(header wire.BlockHeader) (sh StoredHeader, 
 func (h *HeaderDB) GetHeader(hash chainhash.Hash) (sh StoredHeader, err error) {
 	h.lock.Lock()
 	defer h.lock.Unlock()
+
 	cachedHeader, cerr := h.cache.Get(hash)
 	if cerr == nil {
 		return cachedHeader, nil
