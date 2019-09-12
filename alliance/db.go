@@ -4,7 +4,7 @@ import (
 	"errors"
 	"github.com/boltdb/bolt"
 	"github.com/ontio/multi-chain/common"
-	"github.com/ontio/multi-chain/smartcontract/service/native/cross_chain_manager/btc"
+	"github.com/ontio/multi-chain/native/service/cross_chain_manager/btc"
 	"path"
 	"strings"
 	"sync"
@@ -169,4 +169,5 @@ func (w *WatingDB) CheckIfVoted(txid []byte) bool {
 func (w *WatingDB) Close() {
 	w.lock.Lock()
 	w.db.Close()
+	w.lock.Unlock()
 }

@@ -12,7 +12,6 @@ import (
 // This database is mostly just an example implementation used for testing.
 // End users are free to use their own database.
 type SQLiteDatastore struct {
-	keys           wallet.Keys
 	utxos          wallet.Utxos
 	stxos          wallet.Stxos
 	txns           wallet.Txns
@@ -30,10 +29,6 @@ func Create(repoPath string) (*SQLiteDatastore, error) {
 
 	l := new(sync.RWMutex)
 	sqliteDB := &SQLiteDatastore{
-		keys: &KeysDB{
-			db:   conn,
-			lock: l,
-		},
 		utxos: &UtxoDB{
 			db:   conn,
 			lock: l,
@@ -57,9 +52,6 @@ func Create(repoPath string) (*SQLiteDatastore, error) {
 	return sqliteDB, nil
 }
 
-func (db *SQLiteDatastore) Keys() wallet.Keys {
-	return db.keys
-}
 func (db *SQLiteDatastore) Utxos() wallet.Utxos {
 	return db.utxos
 }

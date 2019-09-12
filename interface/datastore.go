@@ -87,7 +87,6 @@ type Datastore interface {
 	Utxos() Utxos
 	Stxos() Stxos
 	Txns() Txns
-	Keys() Keys
 	WatchedScripts() WatchedScripts
 }
 

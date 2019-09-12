@@ -5,6 +5,7 @@ package spvwallet
 
 import (
 	"errors"
+	"github.com/Zou-XueYan/spvwallet/log"
 	"github.com/btcsuite/btcd/blockchain"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
@@ -37,9 +38,10 @@ type Blockchain struct {
 	db           Headers
 	crationDate  time.Time
 	HeaderUpdate chan uint32
+	IsOpen       bool
 }
 
-func NewBlockchain(filePath string, walletCreationDate time.Time, params *chaincfg.Params) (*Blockchain, error) {
+func NewBlockchain(filePath string, walletCreationDate time.Time, params *chaincfg.Params, isOpen bool) (*Blockchain, error) {
 	hdb, err := NewHeaderDB(filePath)
 	if err != nil {
 		return nil, err
@@ -50,6 +52,7 @@ func NewBlockchain(filePath string, walletCreationDate time.Time, params *chainc
 		db:           hdb,
 		crationDate:  walletCreationDate,
 		HeaderUpdate: make(chan uint32, 100),
+		IsOpen:       isOpen,
 	}
 
 	h, err := b.db.Height()
@@ -117,7 +120,7 @@ func (b *Blockchain) CommitHeader(header wire.BlockHeader) (bool, *StoredHeader,
 				log.Errorf("Error calculating common ancestor: %s", err.Error())
 				return newTip, commonAncestor, 0, err
 			}
-			log.Warningf("REORG!!! REORG!!! REORG!!! At block %d, Wiped out %d blocks", int(bestHeader.Height), int(bestHeader.Height-commonAncestor.Height))
+			log.Warnf("REORG!!! REORG!!! REORG!!! At block %d, Wiped out %d blocks", int(bestHeader.Height), int(bestHeader.Height-commonAncestor.Height))
 		}
 	}
 	newHeight := parentHeader.Height + 1
@@ -131,7 +134,7 @@ func (b *Blockchain) CommitHeader(header wire.BlockHeader) (bool, *StoredHeader,
 		return newTip, commonAncestor, 0, err
 	}
 
-	if newTip {
+	if b.IsOpen && newTip && newHeight%10 == 0 {
 		b.HeaderUpdate <- newHeight
 	}
 	return newTip, commonAncestor, newHeight, nil
@@ -156,7 +159,7 @@ func (b *Blockchain) CheckHeader(header wire.BlockHeader, prevHeader StoredHeade
 			return false
 		}
 		if header.Bits != diffTarget {
-			log.Warningf("Block %d %s incorrect difficulty.  Read %d, expect %d\n",
+			log.Warnf("Block %d %s incorrect difficulty.  Read %d, expect %d\n",
 				height+1, header.BlockHash().String(), header.Bits, diffTarget)
 			return false
 		}
@@ -419,6 +422,7 @@ func (b *Blockchain) GetHeader(hash *chainhash.Hash) (StoredHeader, error) {
 func (b *Blockchain) Close() {
 	b.lock.Lock()
 	b.db.Close()
+	b.lock.Unlock()
 }
 
 // Verifies the header hashes into something lower than specified by the 4-byte bits field.

@@ -6,15 +6,14 @@ import (
 	"github.com/Zou-XueYan/spvwallet"
 	"github.com/Zou-XueYan/spvwallet/alliance"
 	"github.com/Zou-XueYan/spvwallet/db"
+	"github.com/Zou-XueYan/spvwallet/log"
 	"github.com/Zou-XueYan/spvwallet/rest/config"
 	"github.com/Zou-XueYan/spvwallet/rest/http/restful"
-	"github.com/Zou-XueYan/spvwallet/rest/log"
 	"github.com/Zou-XueYan/spvwallet/rest/service"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcutil"
-	"github.com/ontio/multi-chain/smartcontract/service/native/cross_chain_manager/btc"
+	"github.com/ontio/multi-chain/native/service/cross_chain_manager/btc"
 	sdk "github.com/ontio/ontology-go-sdk"
-	"github.com/op/go-logging"
 	"github.com/urfave/cli"
 	"net"
 	"os"
@@ -27,11 +26,11 @@ import (
 
 func setupApp() *cli.App {
 	app := cli.NewApp()
-	app.Usage = "start spv client with restful service"
+	app.Usage = "start spv client"
 	app.Action = startSpvClient
 	app.Copyright = ""
 	app.Flags = []cli.Flag{
-		config.RestLogLevelFlag,
+		config.LogLevelFlag,
 		config.RestConfigPathFlag,
 		config.ConfigBitcoinNet,
 		config.ConfigDBPath,
@@ -41,24 +40,27 @@ func setupApp() *cli.App {
 		config.AlliaConfigFile,
 		config.GoMaxProcs,
 		config.RunRest,
+		config.RunVote,
+		config.RestartDuration,
+		config.IsRestart,
 	}
 	app.Before = func(context *cli.Context) error {
 		cores := context.GlobalInt(config.GoMaxProcs.Name)
-		runtime.GOMAXPROCS(cores) //(runtime.NumCPU())
+		runtime.GOMAXPROCS(cores)
 		return nil
 	}
 	return app
 }
 
 func startSpvClient(ctx *cli.Context) {
-	backend := logging.NewLogBackend(os.Stdout, "", 0)
-	formatter := logging.MustStringFormatter(`%{color}%{time:2006/01/02 15:04:05} [%{shortfunc}] [%{level}] %{message}`)
-	stdoutFormatter := logging.NewBackendFormatter(backend, formatter)
+	logLevel := ctx.GlobalInt(config.GetFlagName(config.LogLevelFlag))
+	log.InitLog(logLevel, log.Stdout)
 
 	conf := spvwallet.NewDefaultConfig()
-	conf.Logger = logging.MultiLogger(stdoutFormatter)
-	netType := ctx.GlobalString(config.GetFlagName(config.ConfigBitcoinNet))
+	isVote := ctx.GlobalInt(config.RunVote.Name) == 1
+	conf.IsVote = isVote
 
+	netType := ctx.GlobalString(config.GetFlagName(config.ConfigBitcoinNet))
 	dbPath := ctx.GlobalString(config.GetFlagName(config.ConfigDBPath))
 	if dbPath != "" {
 		conf.RepoPath = dbPath
@@ -84,7 +86,7 @@ func startSpvClient(ctx *cli.Context) {
 	sqliteDatastore, err := db.Create(conf.RepoPath)
 	if err != nil {
 		log.Fatalf("Failed to create db: %v", err)
-		return
+		os.Exit(1)
 	}
 	conf.DB = sqliteDatastore
 
@@ -92,12 +94,11 @@ func startSpvClient(ctx *cli.Context) {
 	if err != nil {
 		log.Fatalf("Failed to parse WalletCreatedTime, please check your input %s: %v",
 			ctx.GlobalString(config.GetFlagName(config.WalletCreatedTime)), err)
-		return
+		os.Exit(1)
 	}
 	conf.CreationDate = createdTime
 	log.Infof("Set wallet created time %s", createdTime.String())
 
-	conf.DisableExchangeRates = true
 	watchedAddr := ctx.GlobalString(config.GetFlagName(config.WatchedAddress))
 
 	wallet, _ := spvwallet.NewSPVWallet(conf)
@@ -105,7 +106,7 @@ func startSpvClient(ctx *cli.Context) {
 		wa, err := btcutil.DecodeAddress(watchedAddr, conf.Params)
 		if err != nil {
 			log.Fatalf("Failed to decode your watched address %s: %v", watchedAddr, err)
-			return
+			os.Exit(1)
 		}
 		wallet.AddWatchedAddress(wa)
 		log.Infof("Add %s to watched address", watchedAddr)
@@ -113,22 +114,88 @@ func startSpvClient(ctx *cli.Context) {
 	wallet.Start()
 	defer wallet.Close()
 
-	logLevel := ctx.GlobalInt(config.GetFlagName(config.RestLogLevelFlag))
-	log.InitLog(logLevel, log.Stdout)
+	var restServer restful.ApiServer
 	if ctx.GlobalInt(config.RunRest.Name) == 1 {
-		err = startServer(ctx, wallet)
+		restServer, err = startServer(ctx, wallet)
 		if err != nil {
 			log.Fatalf("Failed to start rest service: %v", err)
-			return
+			os.Exit(1)
 		}
 	}
 
-	err = startAllianceService(ctx, wallet)
-	if err != nil {
-		log.Fatalf("Failed to start alliance service: %v", err)
+	if isVote {
+		err = startAllianceService(ctx, wallet) // TODO:restart need update the wallet
+		if err != nil {
+			log.Fatalf("Failed to start alliance service: %v", err)
+		}
 	}
 
-	waitToExit()
+	sh, err := wallet.Blockchain.BestBlock()
+	if err != nil {
+		log.Fatalf("Failed to get best block: %v", err)
+		os.Exit(1)
+	}
+	lasth := sh.Height
+
+	if ctx.GlobalInt(config.IsRestart.Name) == 1 {
+		again := false
+		for {
+			time.Sleep(time.Duration(ctx.GlobalInt(config.RestartDuration.Name)) * time.Minute)
+			sh, err = wallet.Blockchain.BestBlock()
+			if err != nil {
+				log.Fatalf("Failed to get best block: %v", err)
+				continue
+			}
+			if lasth >= sh.Height {
+				isrb := false
+				log.Debugf("Restart now!!!")
+				if restServer != nil {
+					log.Debugf("stop rest service")
+					restServer.Stop()
+				}
+
+				if again {
+					log.Debugf("It happened TWICE!!!")
+					err = wallet.Blockchain.Rollback(sh.Header.Timestamp.Add(-24 * time.Hour))
+					if err != nil {
+						log.Fatalf("Failed to rollback: %v", err)
+						continue
+					}
+					isrb = true
+				}
+				wallet.Close()
+				_ = os.RemoveAll(path.Join(conf.RepoPath, "peers.json"))
+
+				wallet, _ = spvwallet.NewSPVWallet(conf)
+				if watchedAddr != "" {
+					wa, err := btcutil.DecodeAddress(watchedAddr, conf.Params)
+					if err != nil {
+						log.Fatalf("Failed to decode your watched address %s: %v", watchedAddr, err)
+						continue
+					}
+					wallet.AddWatchedAddress(wa)
+				}
+				wallet.Start()
+
+				if ctx.GlobalInt(config.RunRest.Name) == 1 {
+					restServer, err = startServer(ctx, wallet)
+					if err != nil {
+						log.Fatalf("Failed to restart rest service: %v", err)
+						continue
+					}
+				}
+				log.Info("The block header is not updated for a long time. Restart the service")
+				if isrb {
+					again = false
+				} else {
+					again = true
+				}
+			}
+			lasth = sh.Height
+		}
+	} else {
+		waitToExit()
+	}
 }
 
 func startAllianceService(ctx *cli.Context, wallet *spvwallet.SPVWallet) error {
@@ -164,11 +231,11 @@ func startAllianceService(ctx *cli.Context, wallet *spvwallet.SPVWallet) error {
 	return nil
 }
 
-func startServer(ctx *cli.Context, wallet *spvwallet.SPVWallet) error {
+func startServer(ctx *cli.Context, wallet *spvwallet.SPVWallet) (restful.ApiServer, error) {
 	configPath := ctx.GlobalString(config.GetFlagName(config.RestConfigPathFlag))
 	servConfig, err := config.NewConfig(configPath)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	serv := service.NewService(wallet, servConfig)
@@ -176,7 +243,7 @@ func startServer(ctx *cli.Context, wallet *spvwallet.SPVWallet) error {
 	go restServer.Start()
 	//go checkLogFile(logLevel)
 
-	return nil
+	return restServer, nil
 }
 
 func waitToExit() {

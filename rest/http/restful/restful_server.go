@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Zou-XueYan/spvwallet/log"
 	"github.com/Zou-XueYan/spvwallet/rest/http/common"
-	"github.com/Zou-XueYan/spvwallet/rest/log"
 )
 
 type ApiServer interface {

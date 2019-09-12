@@ -6,7 +6,7 @@ import (
 )
 
 var (
-	RestLogLevelFlag = cli.UintFlag{
+	LogLevelFlag = cli.UintFlag{
 		Name:  "loglevel",
 		Usage: "Set the log level to `<level>` (0~6). 0:Trace 1:Debug 2:Info 3:Warn 4:Error 5:Fatal 6:MaxLevel",
 		Value: DEFAULT_LOG_LEVEL,
@@ -62,8 +62,26 @@ var (
 
 	RunRest = cli.IntFlag{
 		Name:  "rest",
-		Usage: "1: start the restful service. 2: not start",
+		Usage: "1: start the restful service. 0: not start",
 		Value: 1,
+	}
+
+	RunVote = cli.IntFlag{
+		Name:  "vote",
+		Usage: "1: start the vote service. 0: not start",
+		Value: 1,
+	}
+
+	IsRestart = cli.IntFlag{
+		Name:  "isrestart",
+		Usage: "When the header is not updated, restrat the service or not. 1 means YES, 0 means NO, default 1",
+		Value: 1,
+	}
+
+	RestartDuration = cli.IntFlag{
+		Name:  "restart",
+		Usage: "When the header is not updated for 'restart' min, restrat the service. default 10 min",
+		Value: 15,
 	}
 )
 

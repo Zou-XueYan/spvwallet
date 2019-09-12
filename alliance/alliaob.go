@@ -5,7 +5,7 @@ import (
 	"github.com/Zou-XueYan/spvwallet/log"
 	"github.com/btcsuite/btcd/wire"
 	mc "github.com/ontio/multi-chain/common"
-	"github.com/ontio/multi-chain/smartcontract/service/native/cross_chain_manager/btc"
+	"github.com/ontio/multi-chain/native/service/cross_chain_manager/btc"
 	sdk "github.com/ontio/ontology-go-sdk"
 	"github.com/ontio/ontology-go-sdk/common"
 	"time"
@@ -60,6 +60,7 @@ START:
 	log.Infof("[Observer] next, check once %d seconds", ob.conf.LoopWaitTime)
 	for {
 		time.Sleep(time.Second * time.Duration(ob.conf.LoopWaitTime))
+		log.Debugf("observe once")
 		count = 0
 		newTop, err := ob.allia.GetCurrentBlockHeight()
 		if err != nil {

@@ -2,6 +2,7 @@ package spvwallet
 
 import (
 	"errors"
+	"github.com/Zou-XueYan/spvwallet/log"
 	"net"
 	"strconv"
 	"sync"
@@ -209,7 +210,7 @@ func (pm *PeerManager) onVerack(p *peer.Peer, msg *wire.MsgVerAck) {
 		p.NA().HasService(SFNodeBitcoinCash) { // Don't connect to bitcoin cash nodes
 		// onDisconnection will be called
 		// which will remove the peer from openPeers
-		log.Warningf("Peer %s does not support bloom filtering, diconnecting", p)
+		log.Warnf("Peer %s does not support bloom filtering, diconnecting", p)
 		p.Disconnect()
 		return
 	}
@@ -336,6 +337,7 @@ func (pm *PeerManager) getMoreAddresses() {
 			pm.queryDNSSeeds()
 		}
 	}
+
 }
 
 func (pm *PeerManager) onAddr(p *peer.Peer, msg *wire.MsgAddr) {
@@ -349,6 +351,7 @@ func (pm *PeerManager) onHeaders(p *peer.Peer, msg *wire.MsgHeaders) {
 }
 
 func (pm *PeerManager) onMerkleBlock(p *peer.Peer, msg *wire.MsgMerkleBlock) {
+	log.Tracef("---------------onMerkleBlock %s--------", msg.Header.BlockHash().String())
 	if pm.msgChan != nil {
 		pm.msgChan <- merkleBlockMsg{msg, p}
 	}
@@ -367,12 +370,12 @@ func (pm *PeerManager) onTx(p *peer.Peer, msg *wire.MsgTx) {
 }
 
 func (pm *PeerManager) onReject(p *peer.Peer, msg *wire.MsgReject) {
-	log.Warningf("Received reject message from peer %d: Code: %s, Hash %s, Reason: %s", int(p.ID()), msg.Code.String(), msg.Hash.String(), msg.Reason)
+	log.Warnf("Received reject message from peer %d: Code: %s, Hash %s, Reason: %s", int(p.ID()), msg.Code.String(), msg.Hash.String(), msg.Reason)
 }
 
 func (pm *PeerManager) Start() {
 	pm.addrManager.Start()
-	log.Infof("Loaded %d peers from cache\n", pm.addrManager.NumAddresses())
+	log.Infof("Loaded %d peers from cache", pm.addrManager.NumAddresses())
 	if pm.trustedPeer == nil && pm.addrManager.NeedMoreAddresses() {
 		log.Info("Querying DNS seeds")
 		pm.queryDNSSeeds()
@@ -404,6 +407,7 @@ func (pm *PeerManager) Stop() {
 		}()
 	}
 	pm.addrManager.Stop()
+	pm.connManager.Stop()
 	pm.connectedPeers = make(map[uint64]*peer.Peer)
 	wg.Wait()
 }

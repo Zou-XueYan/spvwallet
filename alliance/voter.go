@@ -12,8 +12,8 @@ import (
 	"github.com/btcsuite/btcutil"
 	wire_bch "github.com/gcash/bchd/wire"
 	"github.com/gcash/bchutil/merkleblock"
-	"github.com/ontio/multi-chain/smartcontract/service/native/cross_chain_manager/btc"
-	"github.com/ontio/multi-chain/smartcontract/service/native/cross_chain_manager/inf"
+	"github.com/ontio/multi-chain/native/service/cross_chain_manager/btc"
+	"github.com/ontio/multi-chain/native/service/cross_chain_manager/common"
 	sdk "github.com/ontio/ontology-go-sdk"
 	ocommon "github.com/ontio/ontology/common"
 )
@@ -82,7 +82,7 @@ func (v *Voter) Vote() {
 		log.Infof("[Voter] transaction %s passed the verify, next vote for it", txid.String())
 
 		method := "Vote"
-		param := &inf.VoteParam{
+		param := &common.VoteParam{
 			TxHash:      txid[:],
 			FromChainID: BTC_CHAINID,
 			Address:     v.acct.Address.ToBase58(),
@@ -116,6 +116,7 @@ func (v *Voter) Vote() {
 func (v *Voter) WaitingRetry() {
 	log.Infof("[Voter] start retrying")
 	for newh := range v.wallet.Blockchain.HeaderUpdate {
+		log.Debugf("retry loop once")
 		arr, keys, err := v.watingDB.GetUnderHeightAndDelte(newh - uint32(v.blksToWait) + 1)
 		if err != nil {
 			log.Errorf("[WaitingRetry] failed to get btcproof under height %d from db: %v", newh, err)

@@ -78,7 +78,7 @@ type walletMustManager interface {
 
 	// ExchangeRates returns an ExchangeRates implementation which will provide
 	// fiat exchange rate data for this coin.
-	ExchangeRates() ExchangeRates
+	//ExchangeRates() ExchangeRates
 
 	// AddWatchedAddress adds an address to the wallet to get notifications back when coins
 	// are received or spent from it. These watch only addresses should be persisted between

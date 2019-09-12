@@ -1,6 +1,7 @@
 package spvwallet
 
 import (
+	"github.com/Zou-XueYan/spvwallet/log"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	peerpkg "github.com/btcsuite/btcd/peer"
@@ -124,29 +125,48 @@ func (ws *WireService) Start() {
 		log.Error(err)
 	}
 	log.Infof("Starting wire service at height %d", int(best.Height))
+	//go func() {
+	//	tick := time.NewTicker(30 * time.Second)
+	//	for {
+	//		select {
+	//		case <-tick.C:
+	//			log.Tracef("---------------wire heartbeat-------")
+	//		}
+	//	}
+	//}()
 out:
 	for {
 		select {
 		case m := <-ws.msgChan:
+			log.Tracef("****************GetMsg %d peers***********", len(ws.peerStates))
 			switch msg := m.(type) {
 			case newPeerMsg:
+				log.Tracef("****************newPeerMsg:%s***********", msg.peer.String())
 				ws.handleNewPeerMsg(msg.peer)
 			case donePeerMsg:
+				log.Tracef("****************donePeerMsg:%s***********", msg.peer.String())
 				ws.handleDonePeerMsg(msg.peer)
 			case headersMsg:
+				log.Tracef("****************headersMsg:%d***********", len(msg.headers.Headers))
 				ws.handleHeadersMsg(&msg)
 			case merkleBlockMsg:
+				log.Tracef("****************merkleBlockMsg:%s: %s***********",
+					msg.merkleBlock.Header.BlockHash().String(), msg.peer.String())
 				ws.handleMerkleBlockMsg(&msg)
 			case invMsg:
+				log.Tracef("****************invMsg:%d: %s***********", len(msg.inv.InvList), msg.peer.String())
 				ws.handleInvMsg(&msg)
 			case txMsg:
+				log.Tracef("****************txMsg %s: %s***********", msg.tx.TxHash().String(), msg.peer.String())
 				ws.handleTxMsg(&msg)
 			case updateFiltersMsg:
+				log.Tracef("****************updateFiltersMsg:***********")
 				ws.handleUpdateFiltersMsg()
 			default:
-				log.Warningf("Unknown message type sent to WireService message chan: %T", msg)
+				log.Warnf("Unknown message type sent to WireService message chan: %T", msg)
 			}
 		case <-ws.quit:
+			log.Tracef("****************quit msg***********")
 			break out
 		}
 	}
@@ -168,13 +188,14 @@ func (ws *WireService) handleNewPeerMsg(peer *peerpkg.Peer) {
 		requestedTxns:   make(map[chainhash.Hash]heightAndTime),
 		requestedBlocks: make(map[chainhash.Hash]struct{}),
 	}
-
+	log.Tracef("-------------handleNewPeerMsg-in----------")
 	ws.updateFilterAndSend(peer)
 
 	// If we don't have a sync peer and we are not current we should start a sync
 	if ws.syncPeer == nil && !ws.Current() {
 		ws.startSync(nil)
 	}
+	log.Tracef("-------------handleNewPeerMsg-out----------")
 }
 
 // isSyncCandidate returns whether or not the peer is a candidate to consider
@@ -211,6 +232,7 @@ func (ws *WireService) isSyncCandidate(peer *peerpkg.Peer) bool {
 func (ws *WireService) startSync(syncPeer *peerpkg.Peer) {
 	// Wait for a minimum number of peers to connect. This makes sure we have a good
 	// selection to choose from before starting the sync.
+	log.Tracef("-------------------startSync in------------------")
 	if len(ws.peerStates) < ws.minPeersForSync {
 		return
 	}
@@ -272,8 +294,9 @@ func (ws *WireService) startSync(syncPeer *peerpkg.Peer) {
 		} else {
 			bestPeer.PushGetBlocksMsg(locator, &ws.zeroHash)
 		}
+		log.Tracef("-----------------sync peer is %s------------------", ws.syncPeer.String())
 	} else {
-		log.Warning("No sync candidates available")
+		log.Warn("No sync candidates available")
 	}
 }
 
@@ -322,10 +345,12 @@ func (ws *WireService) handleDonePeerMsg(peer *peerpkg.Peer) {
 
 	// Attempt to find a new peer to sync from if the quitting peer is the
 	// sync peer.
-	if ws.syncPeer == peer && !ws.Current() {
+	if ws.syncPeer == peer {
 		log.Info("Sync peer disconnected")
 		ws.syncPeer = nil
-		ws.startSync(nil)
+		if !ws.Current() {
+			ws.startSync(nil)
+		}
 	}
 }
 
@@ -334,13 +359,13 @@ func (ws *WireService) handleDonePeerMsg(peer *peerpkg.Peer) {
 func (ws *WireService) handleHeadersMsg(hmsg *headersMsg) {
 	peer := hmsg.peer
 	if peer != ws.syncPeer {
-		log.Warning("Received header message from a peer that isn't our sync peer")
+		log.Warn("Received header message from a peer that isn't our sync peer")
 		peer.Disconnect()
 		return
 	}
 	_, exists := ws.peerStates[peer]
 	if !exists {
-		log.Warningf("Received headers message from unknown peer %s", peer)
+		log.Warnf("Received headers message from unknown peer %s", peer)
 		peer.Disconnect()
 		return
 	}
@@ -376,7 +401,7 @@ func (ws *WireService) handleHeadersMsg(hmsg *headersMsg) {
 	// one commit error so we'll consider that acceptable, but anything more than that suggests misbehavior
 	// so we'll dump this peer.
 	if badHeaders > 1 {
-		log.Warningf("Disconnecting from peer %s because he sent us too many bad headers", peer)
+		log.Warnf("Disconnecting from peer %s because he sent us too many bad headers", peer)
 		peer.Disconnect()
 		return
 	}
@@ -385,7 +410,7 @@ func (ws *WireService) handleHeadersMsg(hmsg *headersMsg) {
 	locator := ws.chain.GetBlockLocator()
 	err := peer.PushGetHeadersMsg(locator, &ws.zeroHash)
 	if err != nil {
-		log.Warningf("Failed to send getheaders message to peer %s: %v", peer.Addr(), err)
+		log.Warnf("Failed to send getheaders message to peer %s: %v", peer.Addr(), err)
 		return
 	}
 }
@@ -397,12 +422,12 @@ func (ws *WireService) handleMerkleBlockMsg(bmsg *merkleBlockMsg) {
 
 	// We don't need to process blocks when we're syncing. They wont connect anyway
 	if peer != ws.syncPeer && !ws.Current() {
-		log.Warningf("Received block from %s when we aren't current", peer)
+		log.Warnf("Received block from %s when we aren't current", peer)
 		return
 	}
 	state, exists := ws.peerStates[peer]
 	if !exists {
-		log.Warningf("Received merkle block message from unknown peer %s", peer)
+		log.Warnf("Received merkle block message from unknown peer %s", peer)
 		peer.Disconnect()
 		return
 	}
@@ -418,7 +443,7 @@ func (ws *WireService) handleMerkleBlockMsg(bmsg *merkleBlockMsg) {
 		// mode in this case so the chain code is actually fed the
 		// duplicate blocks.
 		if ws.params.Name != chaincfg.RegressionNetParams.Name {
-			log.Warningf("Got unrequested block %v from %s -- "+
+			log.Warnf("Got unrequested block %v from %s -- "+
 				"disconnecting", blockHash, peer.Addr())
 			peer.Disconnect()
 			return
@@ -433,7 +458,7 @@ func (ws *WireService) handleMerkleBlockMsg(bmsg *merkleBlockMsg) {
 
 	txids, err := checkMBlock(merkleBlock)
 	if err != nil {
-		log.Warningf("Peer %s sent an invalid MerkleBlock", peer)
+		log.Warnf("Peer %s sent an invalid MerkleBlock", peer)
 		peer.Disconnect()
 		return
 	}
@@ -458,11 +483,11 @@ func (ws *WireService) handleMerkleBlockMsg(bmsg *merkleBlockMsg) {
 		// so disconnect.
 		state.blockScore--
 		if state.blockScore < 0 {
-			log.Warningf("Disconnecting from peer %s because he sent us too many bad blocks", peer)
+			log.Warnf("Disconnecting from peer %s because he sent us too many bad blocks", peer)
 			peer.Disconnect()
 			return
 		}
-		log.Warningf("Received unrequested block from peer %s", peer)
+		log.Warnf("Received unrequested block from peer %s", peer)
 		return
 	} else if err != nil {
 		log.Error(err)
@@ -486,12 +511,14 @@ func (ws *WireService) handleMerkleBlockMsg(bmsg *merkleBlockMsg) {
 		log.Debugf("Received duplicate block %s", blockHash.String())
 		return
 	}
-
-	log.Infof("Received merkle block %s at height %d", blockHash.String(), newHeight)
+	best, _ := ws.chain.BestBlock()
+	log.Infof("Received merkle block %s at height %d---best: %s, %d, work:%s", blockHash.String(), newHeight,
+		best.Header.BlockHash().String(), best.Height, best.totalWork.String())
 
 	// Check reorg
 	if reorg != nil && ws.Current() {
 		// Rollback the appropriate transactions in our database
+		log.Tracef("^^^^^^^^^^^^^^^^^^^^process reorg: %s: %d", reorg.Header.BlockHash().String(), reorg.Height)
 		err := ws.txStore.processReorg(reorg.Height)
 		if err != nil {
 			log.Error(err)
@@ -528,6 +555,7 @@ func (ws *WireService) handleMerkleBlockMsg(bmsg *merkleBlockMsg) {
 		peer.QueueMessage(gdmsg2, nil)
 		log.Debugf("Requesting block %s, len request queue: %d", iv.Hash.String(), len(state.requestQueue))
 	}
+	log.Tracef("*******************%d here********************", newHeight)
 }
 
 // handleInvMsg handles inv messages from all peers.
@@ -536,7 +564,7 @@ func (ws *WireService) handleInvMsg(imsg *invMsg) {
 	peer := imsg.peer
 	state, exists := ws.peerStates[peer]
 	if !exists {
-		log.Warningf("Received inv message from unknown peer %s", peer)
+		log.Warnf("Received inv message from unknown peer %s", peer)
 		return
 	}
 
@@ -563,6 +591,25 @@ func (ws *WireService) handleInvMsg(imsg *invMsg) {
 	// Ignore invs from peers that aren't the sync if we are not current.
 	// Helps prevent fetching a mass of orphans.
 	if peer != ws.syncPeer && !ws.Current() {
+		if ws.syncPeer == nil {
+			log.Tracef("*************not sync syncPeer is nil, current: %v*************", ws.Current())
+		} else {
+			log.Tracef("*************not sync syncPeer: %v, current: %v*************", ws.syncPeer.String(), ws.Current())
+		}
+		content := "invlist:"
+		for _, iv := range invVects {
+			switch iv.Type {
+			case wire.InvTypeFilteredBlock:
+				fallthrough
+			case wire.InvTypeBlock:
+				content += "\n\tblock:" + iv.Hash.String()
+			case wire.InvTypeTx:
+				content += "\n\ttx:" + iv.Hash.String()
+			default:
+				continue
+			}
+		}
+		log.Tracef("^^^^^^^^^^^^^^%s\n", content)
 		return
 	}
 
@@ -591,7 +638,7 @@ func (ws *WireService) handleInvMsg(imsg *invMsg) {
 		// Request the inventory if we don't already have it.
 		haveInv, err := ws.haveInventory(iv)
 		if err != nil {
-			log.Warningf("Unexpected failure when checking for "+
+			log.Warnf("Unexpected failure when checking for "+
 				"existing inventory during inv message "+
 				"processing: %v", err)
 			continue
@@ -639,6 +686,7 @@ func (ws *WireService) handleInvMsg(imsg *invMsg) {
 	if len(gdmsg.InvList) > 0 {
 		peer.QueueMessage(gdmsg, nil)
 	}
+	log.Tracef("*******************inv here********************")
 }
 
 func (ws *WireService) handleTxMsg(tmsg *txMsg) {
@@ -648,12 +696,12 @@ func (ws *WireService) handleTxMsg(tmsg *txMsg) {
 
 	state, exists := ws.peerStates[peer]
 	if !exists {
-		log.Warningf("Received tx message from unknown peer %s", peer)
+		log.Warnf("Received tx message from unknown peer %s", peer)
 		return
 	}
 	ht, ok := state.requestedTxns[tx.TxHash()]
 	if !ok {
-		log.Warningf("Peer %s is sending us transactions we didn't request", peer)
+		log.Warnf("Peer %s is sending us transactions we didn't request", peer)
 		peer.Disconnect()
 		return
 	}

@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"errors"
 	"github.com/Zou-XueYan/spvwallet/interface"
+	"github.com/Zou-XueYan/spvwallet/log"
 	"github.com/btcsuite/btcd/blockchain"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
@@ -26,7 +27,7 @@ type TxStore struct {
 	addrMutex      *sync.Mutex
 	cbMutex        *sync.Mutex
 
-	keyManager *KeyManager
+	//keyManager *KeyManager
 
 	params *chaincfg.Params
 
@@ -35,10 +36,10 @@ type TxStore struct {
 	wallet.Datastore
 }
 
-func NewTxStore(p *chaincfg.Params, db wallet.Datastore, keyManager *KeyManager) (*TxStore, error) {
+func NewTxStore(p *chaincfg.Params, db wallet.Datastore) (*TxStore, error) {
 	txs := &TxStore{
-		params:     p,
-		keyManager: keyManager,
+		params: p,
+		//keyManager: keyManager,
 		addrMutex:  new(sync.Mutex),
 		cbMutex:    new(sync.Mutex),
 		txidsMutex: new(sync.RWMutex),
@@ -170,16 +171,16 @@ func (ts *TxStore) GetPendingInv() (*wire.MsgInv, error) {
 
 // PopulateAdrs just puts a bunch of adrs in ram; it doesn't touch the DB
 func (ts *TxStore) PopulateAdrs() error {
-	keys := ts.keyManager.GetKeys()
+	//keys := ts.keyManager.GetKeys()
 	ts.addrMutex.Lock()
 	ts.adrs = []btcutil.Address{}
-	for _, k := range keys {
-		addr, err := k.Address(ts.params)
-		if err != nil {
-			continue
-		}
-		ts.adrs = append(ts.adrs, addr)
-	}
+	//for _, k := range keys {
+	//	addr, err := k.Address(ts.params)
+	//	if err != nil {
+	//		continue
+	//	}
+	//	ts.adrs = append(ts.adrs, addr)
+	//}
 	ts.addrMutex.Unlock()
 
 	ts.watchedScripts, _ = ts.WatchedScripts().GetAll()
@@ -232,18 +233,18 @@ func (ts *TxStore) Ingest(tx *wire.MsgTx, height int32, timestamp time.Time) (ui
 	}
 
 	// Generate PKscripts for all addresses
-	ts.addrMutex.Lock()
-	PKscripts := make([][]byte, len(ts.adrs))
-	for i := range ts.adrs {
-		// Iterate through all our addresses
-		// TODO: This will need to test both segwit and legacy once segwit activates
-		PKscripts[i], err = txscript.PayToAddrScript(ts.adrs[i])
-		if err != nil {
-			ts.addrMutex.Unlock()
-			return hits, err
-		}
-	}
-	ts.addrMutex.Unlock()
+	//ts.addrMutex.Lock()
+	//PKscripts := make([][]byte, len(ts.adrs))
+	//for i := range ts.adrs {
+	//	// Iterate through all our addresses
+	//	// TODO: This will need to test both segwit and legacy once segwit activates
+	//	PKscripts[i], err = txscript.PayToAddrScript(ts.adrs[i])
+	//	if err != nil {
+	//		ts.addrMutex.Unlock()
+	//		return hits, err
+	//	}
+	//}
+	//ts.addrMutex.Unlock()
 
 	// Iterate through all outputs of this tx, see if we gain
 	cachedSha := tx.TxHash()
@@ -255,27 +256,27 @@ func (ts *TxStore) Ingest(tx *wire.MsgTx, height int32, timestamp time.Time) (ui
 		// for his change and we don't want to fail in that case.
 		addr, _ := scriptToAddress(txout.PkScript, ts.params)
 		out := wallet.TransactionOutput{Address: addr, Value: txout.Value, Index: uint32(i)}
-		for _, script := range PKscripts {
-			if bytes.Equal(txout.PkScript, script) { // new utxo found
-				scriptAddress, _ := ts.extractScriptAddress(txout.PkScript)
-				ts.keyManager.MarkKeyAsUsed(scriptAddress)
-				newop := wire.OutPoint{
-					Hash:  cachedSha,
-					Index: uint32(i),
-				}
-				newu := wallet.Utxo{
-					AtHeight:     height,
-					Value:        txout.Value,
-					ScriptPubkey: txout.PkScript,
-					Op:           newop,
-					WatchOnly:    false,
-				}
-				value += newu.Value
-				ts.Utxos().Put(newu)
-				hits++
-				break
-			}
-		}
+		//for _, script := range PKscripts {
+		//	if bytes.Equal(txout.PkScript, script) { // new utxo found
+		//		scriptAddress, _ := ts.extractScriptAddress(txout.PkScript)
+		//		//ts.keyManager.MarkKeyAsUsed(scriptAddress)
+		//		newop := wire.OutPoint{
+		//			Hash:  cachedSha,
+		//			Index: uint32(i),
+		//		}
+		//		newu := wallet.Utxo{
+		//			AtHeight:     height,
+		//			Value:        txout.Value,
+		//			ScriptPubkey: txout.PkScript,
+		//			Op:           newop,
+		//			WatchOnly:    false,
+		//		}
+		//		value += newu.Value
+		//		ts.Utxos().Put(newu)
+		//		hits++
+		//		break
+		//	}
+		//}
 		// Now check watched scripts
 		for _, script := range ts.watchedScripts {
 			if bytes.Equal(txout.PkScript, script) {

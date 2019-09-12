@@ -4,7 +4,6 @@ import (
 	"github.com/Zou-XueYan/spvwallet/interface"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/mitchellh/go-homedir"
-	"github.com/op/go-logging"
 	"golang.org/x/net/proxy"
 	"net"
 	"net/url"
@@ -19,7 +18,7 @@ type Config struct {
 	Params *chaincfg.Params
 
 	// Bip39 mnemonic string. If empty a new mnemonic will be created.
-	Mnemonic string
+	//Mnemonic string
 
 	// The date the wallet was created.
 	// If before the earliest checkpoint the chain will be synced using the earliest checkpoint.
@@ -55,10 +54,11 @@ type Config struct {
 	FeeAPI url.URL
 
 	// A logger. You can write the logs to file or stdout or however else you want.
-	Logger logging.Backend
+	//Logger logging.Backend
 
 	// Disable the exchange rate provider
-	DisableExchangeRates bool
+	//DisableExchangeRates bool
+	IsVote bool
 }
 
 func NewDefaultConfig() *Config {
@@ -69,6 +69,7 @@ func NewDefaultConfig() *Config {
 	}
 	feeApi, _ := url.Parse("https://bitcoinfees.earn.com/api/v1/fees/recommended")
 	return &Config{
+		IsVote:    false,
 		Params:    &chaincfg.MainNetParams,
 		UserAgent: "spvwallet",
 		RepoPath:  repoPath,
@@ -77,7 +78,7 @@ func NewDefaultConfig() *Config {
 		HighFee:   40,
 		MaxFee:    2000,
 		FeeAPI:    *feeApi,
-		Logger:    logging.NewLogBackend(os.Stdout, "", 0),
+		//Logger:    logging.NewLogBackend(os.Stdout, "", 0),
 	}
 }
 

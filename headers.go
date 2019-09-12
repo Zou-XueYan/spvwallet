@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"github.com/Zou-XueYan/spvwallet/log"
 	"io"
 	"math/big"
 	"path"
@@ -459,6 +460,7 @@ func (h *HeaderDB) initializeCache() {
 func (h *HeaderDB) Close() {
 	h.lock.Lock()
 	h.db.Close()
+	h.lock.Unlock()
 }
 
 /*----- header serialization ------- */
