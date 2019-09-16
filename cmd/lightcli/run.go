@@ -156,7 +156,7 @@ func startSpvClient(ctx *cli.Context) {
 
 				if again {
 					log.Debugf("It happened TWICE!!!")
-					err = wallet.Blockchain.Rollback(sh.Header.Timestamp.Add(-24 * time.Hour))
+					err = wallet.Blockchain.Rollback(sh.Header.Timestamp.Add(-6 * time.Hour))
 					if err != nil {
 						log.Fatalf("Failed to rollback: %v", err)
 						continue
@@ -190,6 +190,8 @@ func startSpvClient(ctx *cli.Context) {
 				} else {
 					again = true
 				}
+			} else {
+				again = false
 			}
 			lasth = sh.Height
 		}
