@@ -12,14 +12,12 @@ import (
 	"github.com/btcsuite/btcutil"
 	wire_bch "github.com/gcash/bchd/wire"
 	"github.com/gcash/bchutil/merkleblock"
+	sdk "github.com/ontio/multi-chain-go-sdk"
 	"github.com/ontio/multi-chain/native/service/cross_chain_manager/btc"
-	"github.com/ontio/multi-chain/native/service/cross_chain_manager/common"
-	sdk "github.com/ontio/ontology-go-sdk"
-	ocommon "github.com/ontio/ontology/common"
 )
 
 type Voter struct {
-	allia         *sdk.OntologySdk
+	allia         *sdk.MultiChainSdk
 	voting        chan *btc.BtcProof
 	wallet        *spvwallet.SPVWallet
 	redeemToWatch []byte
@@ -28,10 +26,11 @@ type Voter struct {
 	gasLimit      uint64
 	watingDB      *WatingDB
 	blksToWait    uint64
+	quit          chan struct{}
 }
 
-func NewVoter(allia *sdk.OntologySdk, voting chan *btc.BtcProof, wallet *spvwallet.SPVWallet, redeem []byte,
-	acct *sdk.Account, gasPrice uint64, gasLimit uint64, dbFile string, blksToWait uint64) (*Voter, error) {
+func NewVoter(allia *sdk.MultiChainSdk, voting chan *btc.BtcProof, wallet *spvwallet.SPVWallet, redeem []byte,
+	acct *sdk.Account, gasPrice uint64, gasLimit uint64, dbFile string, blksToWait uint64, quit chan struct{}) (*Voter, error) {
 	wdb, err := NewWaitingDB(dbFile)
 	if err != nil {
 		return nil, err
@@ -46,89 +45,93 @@ func NewVoter(allia *sdk.OntologySdk, voting chan *btc.BtcProof, wallet *spvwall
 		gasPrice:      gasPrice,
 		watingDB:      wdb,
 		blksToWait:    blksToWait,
+		quit:          quit,
 	}, nil
 }
 
 func (v *Voter) Vote() {
 	log.Infof("[Voter] start voting")
-	contractAddress, _ := ocommon.AddressParseFromBytes([]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10})
 
-	for item := range v.voting {
-		mtx, err := v.verify(item)
-		switch val := err.(type) {
-		case LessConfirmationError:
-			go func(txid chainhash.Hash, proof *btc.BtcProof) {
-				err = v.watingDB.Put(txid[:], item)
-				if err != nil {
-					log.Errorf("[Voter] failed to write %s into db: %v", mtx.TxHash().String(), err)
-				} else if err = v.watingDB.MarkVotedTx(txid[:]); err != nil {
-					log.Infof("[Voter] write %s into db and marked: %s", txid.String(), val.Error())
+	for {
+		select {
+		case item := <-v.voting:
+			mtx, err := v.verify(item)
+			switch val := err.(type) {
+			case LessConfirmationError:
+				go func(txid chainhash.Hash, proof *btc.BtcProof) {
+					err = v.watingDB.Put(txid[:], item)
+					if err != nil {
+						log.Errorf("[Voter] failed to write %s into db: %v", mtx.TxHash().String(), err)
+					} else if err = v.watingDB.MarkVotedTx(txid[:]); err != nil {
+						log.Infof("[Voter] write %s into db and marked: %s", txid.String(), val.Error())
+					} else {
+						log.Errorf("[Voter] failed to mark %s: %v", txid.String(), err)
+					}
+				}(mtx.TxHash(), item)
+				continue
+			case error:
+				if mtx != nil {
+					log.Errorf("[Voter] failed to verify %s: %v", mtx.TxHash().String(), err)
 				} else {
-					log.Errorf("[Voter] failed to mark %s: %v", txid.String(), err)
+					log.Errorf("[Voter] : %v", err)
 				}
-			}(mtx.TxHash(), item)
-			continue
-		case error:
-			if mtx != nil {
-				log.Errorf("[Voter] failed to verify %s: %v", mtx.TxHash().String(), err)
-			} else {
-				log.Errorf("[Voter] : %v", err)
+				continue
 			}
-			continue
-		}
 
-		txid := mtx.TxHash()
-		log.Infof("[Voter] transaction %s passed the verify, next vote for it", txid.String())
+			txid := mtx.TxHash()
+			log.Infof("[Voter] transaction %s passed the verify, next vote for it", txid.String())
 
-		method := "Vote"
-		param := &common.VoteParam{
-			TxHash:      txid[:],
-			FromChainID: BTC_CHAINID,
-			Address:     v.acct.Address.ToBase58(),
-		}
-		txHash, err := v.allia.Native.InvokeNativeContract(v.gasPrice, v.gasLimit, v.acct, byte(0), contractAddress,
-			method, []interface{}{param})
-		if err != nil {
-			log.Errorf("[Voter] invokeNativeContract error: %v", err)
-			continue
-		}
+			txHash, err := v.allia.Native.Ccm.Vote(BTC_CHAINID, v.acct.Address.ToBase58(), txid.String(), v.acct)
+			if err != nil {
+				log.Errorf("[Voter] invokeNativeContract error: %v", err)
+				continue
+			}
 
-		err = v.watingDB.MarkVotedTx(txid[:])
-		if err != nil {
-			log.Errorf("[Voter] failed to mark tx %s: %v", err)
-			continue
+			err = v.watingDB.MarkVotedTx(txid[:])
+			if err != nil {
+				log.Errorf("[Voter] failed to mark tx %s: %v", err)
+				continue
+			}
+			log.Infof("[Voter] vote yes for %s and marked. Sending transaction %s to alliance chain", txid.String(),
+				txHash.ToHexString())
+			//go func() { // TODO
+			//	event, err := v.allia.GetSmartContractEvent(txHash.ToHexString())
+			//
+			//	if event.State == 0 || err != nil {
+			//		log.Errorf("[Voter] voting for %s failed.(alliance transaction %s)", txid.String(), txHash.ToHexString())
+			//	} else {
+			//		log.Infof("[Voter] successfully")
+			//	}
+			//}()
+		case <-v.quit:
+			log.Info("stopping voting")
+			return
 		}
-		log.Infof("[Voter] vote yes for %s and marked. Sending transaction %s to alliance chain", txid.String(),
-			txHash.ToHexString())
-		//go func() { // TODO
-		//	event, err := v.allia.GetSmartContractEvent(txHash.ToHexString())
-		//
-		//	if event.State == 0 || err != nil {
-		//		log.Errorf("[Voter] voting for %s failed.(alliance transaction %s)", txid.String(), txHash.ToHexString())
-		//	} else {
-		//		log.Infof("[Voter] successfully")
-		//	}
-		//}()
 	}
 }
 
 func (v *Voter) WaitingRetry() {
 	log.Infof("[Voter] start retrying")
-	for newh := range v.wallet.Blockchain.HeaderUpdate {
-		log.Debugf("retry loop once")
-		arr, keys, err := v.watingDB.GetUnderHeightAndDelte(newh - uint32(v.blksToWait) + 1)
-		if err != nil {
-			log.Errorf("[WaitingRetry] failed to get btcproof under height %d from db: %v", newh, err)
-			continue
-		} else if len(arr) == 0 {
-			continue
-		}
 
-		for i, p := range arr {
-			txid, _ := chainhash.NewHash(keys[i])
-			log.Infof("[WaitingRetry] send txid:%s to vote", txid.String())
-			v.voting <- p
+	for {
+		select {
+		case newh := <-v.wallet.Blockchain.HeaderUpdate:
+			log.Debugf("retry loop once")
+			arr, keys, err := v.watingDB.GetUnderHeightAndDelte(newh - uint32(v.blksToWait) + 1)
+			if err != nil {
+				log.Errorf("[WaitingRetry] failed to get btcproof under height %d from db: %v", newh, err)
+				continue
+			} else if len(arr) == 0 {
+				continue
+			}
+			for i, p := range arr {
+				txid, _ := chainhash.NewHash(keys[i])
+				log.Infof("[WaitingRetry] send txid:%s to vote", txid.String())
+				v.voting <- p
+			}
+		case <-v.quit:
+			log.Info("stopping retrying")
+			return
 		}
 	}
 }

@@ -6,8 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/btcsuite/btcd/wire"
+	sdk "github.com/ontio/multi-chain-go-sdk"
 	"github.com/ontio/multi-chain/common"
-	sdk "github.com/ontio/ontology-go-sdk"
 	"io/ioutil"
 	"os"
 )
@@ -111,7 +111,7 @@ func (this *AlliaConfig) readFile(fileName string) ([]byte, error) {
 	return data, nil
 }
 
-func GetAccountByPassword(sdk *sdk.OntologySdk, path, pwd string) (*sdk.Account, error) {
+func GetAccountByPassword(sdk *sdk.MultiChainSdk, path, pwd string) (*sdk.Account, error) {
 	wallet, err := sdk.OpenWallet(path)
 	if err != nil {
 		return nil, fmt.Errorf("open wallet error: %v", err)

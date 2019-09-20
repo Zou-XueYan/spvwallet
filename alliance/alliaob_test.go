@@ -4,7 +4,7 @@ import (
 	"encoding/hex"
 	"github.com/Zou-XueYan/spvwallet/log"
 	mcommon "github.com/ontio/multi-chain/common"
-	"github.com/ontio/multi-chain/smartcontract/service/native/cross_chain_manager/btc"
+	"github.com/ontio/multi-chain/native/service/cross_chain_manager/btc"
 	sdk "github.com/ontio/ontology-go-sdk"
 	"github.com/ontio/ontology-go-sdk/common"
 	"testing"
@@ -20,11 +20,12 @@ func TestNewObserver(t *testing.T) {
 	allia.NewRpcClient().SetAddress(RpcAddr)
 	voting := make(chan *btc.BtcProof, 10)
 
+	quit := make(chan struct{})
 	NewObserver(allia, &ObConfig{
 		FirstN:       10,
 		LoopWaitTime: 2,
 		WatchingKey:  "notifyBtcProof",
-	}, voting)
+	}, voting, quit)
 }
 
 func TestObserver_Listen(t *testing.T) {
@@ -32,11 +33,12 @@ func TestObserver_Listen(t *testing.T) {
 	allia.NewRpcClient().SetAddress(RpcAddr)
 	voting := make(chan *btc.BtcProof, 10)
 
+	quit := make(chan struct{})
 	ob := NewObserver(allia, &ObConfig{
 		FirstN:       10,
 		LoopWaitTime: 2,
 		WatchingKey:  "notifyBtcProof",
-	}, voting)
+	}, voting, quit)
 	log.InitLog(2, log.Stdout)
 
 	go ob.Listen()
@@ -48,12 +50,13 @@ func TestObserver_checkEvents(t *testing.T) {
 	allia := sdk.NewOntologySdk()
 	allia.NewRpcClient().SetAddress(RpcAddr)
 	voting := make(chan *btc.BtcProof, 10)
+	quit := make(chan struct{})
 
 	ob := NewObserver(allia, &ObConfig{
 		FirstN:       10,
 		LoopWaitTime: 2,
 		WatchingKey:  "notifyBtcProof",
-	}, voting)
+	}, voting, quit)
 	log.InitLog(2, log.Stdout)
 
 	sink := mcommon.NewZeroCopySink(nil)

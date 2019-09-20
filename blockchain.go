@@ -120,9 +120,16 @@ func (b *Blockchain) CommitHeader(header wire.BlockHeader) (bool, *StoredHeader,
 				log.Errorf("Error calculating common ancestor: %s", err.Error())
 				return newTip, commonAncestor, 0, err
 			}
-			log.Warnf("REORG!!! REORG!!! REORG!!! At block %d, Wiped out %d blocks", int(bestHeader.Height), int(bestHeader.Height-commonAncestor.Height))
+
+			if chash := commonAncestor.Header.BlockHash(); chash.IsEqual(&tipHash) {
+				commonAncestor = nil
+				log.Warnf("commonAncestor is our best %s, so make the new header %s our best", tipHash.String(), headerHash.String())
+			} else {
+				log.Warnf("REORG!!! REORG!!! REORG!!! At block %d, Wiped out %d blocks", int(bestHeader.Height), int(bestHeader.Height-commonAncestor.Height))
+			}
 		}
 	}
+
 	newHeight := parentHeader.Height + 1
 	// Put the header to the database
 	err = b.db.Put(StoredHeader{
@@ -409,6 +416,22 @@ func (b *Blockchain) GetHeaderByHeight(height uint32) (sh StoredHeader, err erro
 		return sh, err
 	}
 	return sh, nil
+
+	//best, err := b.db.GetBestHeader()
+	//if err != nil {
+	//	return StoredHeader{}, err
+	//} else if best.Height < height {
+	//	return StoredHeader{}, fmt.Errorf("best block height %d is lower than %d", best.Height, height)
+	//}
+	//
+	//ptr := best
+	//for ptr.Height > height {
+	//	if ptr, err = b.db.GetPreviousHeader(ptr.Header); err != nil {
+	//		return StoredHeader{}, fmt.Errorf("maybe %d not in db: %v", height, err)
+	//	}
+	//}
+
+	//return ptr, nil
 }
 
 func (b *Blockchain) GetHeader(hash *chainhash.Hash) (StoredHeader, error) {

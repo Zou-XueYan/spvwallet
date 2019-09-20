@@ -596,22 +596,23 @@ func (ws *WireService) handleInvMsg(imsg *invMsg) {
 		} else {
 			log.Tracef("*************not sync syncPeer: %v, current: %v*************", ws.syncPeer.String(), ws.Current())
 		}
-		content := "invlist:"
-		for _, iv := range invVects {
-			switch iv.Type {
-			case wire.InvTypeFilteredBlock:
-				fallthrough
-			case wire.InvTypeBlock:
-				content += "\n\tblock:" + iv.Hash.String()
-			case wire.InvTypeTx:
-				content += "\n\ttx:" + iv.Hash.String()
-			default:
-				continue
-			}
-		}
-		log.Tracef("^^^^^^^^^^^^^^%s\n", content)
 		return
 	}
+
+	content := "invlist:"
+	for _, iv := range invVects {
+		switch iv.Type {
+		case wire.InvTypeFilteredBlock:
+			fallthrough
+		case wire.InvTypeBlock:
+			content += "\n\tblock:" + iv.Hash.String()
+		case wire.InvTypeTx:
+			content += "\n\ttx:" + iv.Hash.String()
+		default:
+			continue
+		}
+	}
+	log.Tracef("^^^^^^^^^^^^^^%s\n", content)
 
 	// If our chain is current and a peer announces a block we already
 	// know of, then update their current block height.

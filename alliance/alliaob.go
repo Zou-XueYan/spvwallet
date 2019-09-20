@@ -4,10 +4,10 @@ import (
 	"encoding/hex"
 	"github.com/Zou-XueYan/spvwallet/log"
 	"github.com/btcsuite/btcd/wire"
+	sdk "github.com/ontio/multi-chain-go-sdk"
+	"github.com/ontio/multi-chain-go-sdk/common"
 	mc "github.com/ontio/multi-chain/common"
 	"github.com/ontio/multi-chain/native/service/cross_chain_manager/btc"
-	sdk "github.com/ontio/ontology-go-sdk"
-	"github.com/ontio/ontology-go-sdk/common"
 	"time"
 )
 
@@ -19,15 +19,17 @@ type ObConfig struct {
 
 type Observer struct {
 	voting chan *btc.BtcProof
-	allia  *sdk.OntologySdk
+	allia  *sdk.MultiChainSdk
 	conf   *ObConfig
+	quit   chan struct{}
 }
 
-func NewObserver(allia *sdk.OntologySdk, conf *ObConfig, voting chan *btc.BtcProof) *Observer {
+func NewObserver(allia *sdk.MultiChainSdk, conf *ObConfig, voting chan *btc.BtcProof, quit chan struct{}) *Observer {
 	return &Observer{
 		voting: voting,
 		conf:   conf,
 		allia:  allia,
+		quit:   quit,
 	}
 }
 
@@ -58,38 +60,46 @@ START:
 	log.Infof("[Observer] total %d transactions captured from %d blocks", count, ob.conf.FirstN)
 
 	log.Infof("[Observer] next, check once %d seconds", ob.conf.LoopWaitTime)
+	tick := time.NewTicker(time.Second * time.Duration(ob.conf.LoopWaitTime))
+	defer tick.Stop()
+
 	for {
-		time.Sleep(time.Second * time.Duration(ob.conf.LoopWaitTime))
-		log.Debugf("observe once")
-		count = 0
-		newTop, err := ob.allia.GetCurrentBlockHeight()
-		if err != nil {
-			log.Errorf("[Observer] failed to get current height, retry after 10 sec: %v", err)
-			time.Sleep(time.Second * 10)
-			continue
-		}
-
-		num := int64(newTop - top)
-		if num == 0 {
-			continue
-		}
-
-		h := newTop
-		for num > 0 {
-			events, err := ob.allia.GetSmartContractEventByBlock(h)
+		select {
+		case <-tick.C:
+			log.Debugf("observe once")
+			count = 0
+			newTop, err := ob.allia.GetCurrentBlockHeight()
 			if err != nil {
-				log.Errorf("[Observer] GetSmartContractEventByBlock failed, retry after 10 sec: %v", err)
+				log.Errorf("[Observer] failed to get current height, retry after 10 sec: %v", err)
 				time.Sleep(time.Second * 10)
 				continue
 			}
-			count += ob.checkEvents(events, h)
-			num--
-			h--
+
+			num := int64(newTop - top)
+			if num == 0 {
+				continue
+			}
+
+			h := newTop
+			for num > 0 {
+				events, err := ob.allia.GetSmartContractEventByBlock(h)
+				if err != nil {
+					log.Errorf("[Observer] GetSmartContractEventByBlock failed, retry after 10 sec: %v", err)
+					time.Sleep(time.Second * 10)
+					continue
+				}
+				count += ob.checkEvents(events, h)
+				num--
+				h--
+			}
+			if count > 0 {
+				log.Infof("[Observer] total %d transactions captured this time", count)
+			}
+			top = newTop
+		case <-ob.quit:
+			log.Info("stopping observing alliance network")
+			return
 		}
-		if count > 0 {
-			log.Infof("[Observer] total %d transactions captured this time", count)
-		}
-		top = newTop
 	}
 }
 

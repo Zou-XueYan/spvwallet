@@ -12,8 +12,9 @@ import (
 	"github.com/Zou-XueYan/spvwallet/rest/service"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcutil"
+	"github.com/google/gops/agent"
+	sdk "github.com/ontio/multi-chain-go-sdk"
 	"github.com/ontio/multi-chain/native/service/cross_chain_manager/btc"
-	sdk "github.com/ontio/ontology-go-sdk"
 	"github.com/urfave/cli"
 	"net"
 	"os"
@@ -114,7 +115,7 @@ func startSpvClient(ctx *cli.Context) {
 	wallet.Start()
 	defer wallet.Close()
 
-	var restServer restful.ApiServer
+	restServer := restful.ApiServer(nil)
 	if ctx.GlobalInt(config.RunRest.Name) == 1 {
 		restServer, err = startServer(ctx, wallet)
 		if err != nil {
@@ -123,8 +124,10 @@ func startSpvClient(ctx *cli.Context) {
 		}
 	}
 
+	voting := make(chan *btc.BtcProof, 10)
+	quit := make(chan struct{})
 	if isVote {
-		err = startAllianceService(ctx, wallet) // TODO:restart need update the wallet
+		err = startAllianceService(ctx, wallet, voting, quit) // TODO:restart need update the wallet
 		if err != nil {
 			log.Fatalf("Failed to start alliance service: %v", err)
 		}
@@ -139,8 +142,10 @@ func startSpvClient(ctx *cli.Context) {
 
 	if ctx.GlobalInt(config.IsRestart.Name) == 1 {
 		again := false
+		td := time.Duration(ctx.GlobalInt(config.RestartDuration.Name)) * time.Minute
+		timer := time.NewTimer(td)
 		for {
-			time.Sleep(time.Duration(ctx.GlobalInt(config.RestartDuration.Name)) * time.Minute)
+			<-timer.C
 			sh, err = wallet.Blockchain.BestBlock()
 			if err != nil {
 				log.Fatalf("Failed to get best block: %v", err)
@@ -154,6 +159,11 @@ func startSpvClient(ctx *cli.Context) {
 					restServer.Stop()
 				}
 
+				if isVote {
+					log.Debugf("stop voter")
+					close(quit)
+				}
+
 				if again {
 					log.Debugf("It happened TWICE!!!")
 					err = wallet.Blockchain.Rollback(sh.Header.Timestamp.Add(-6 * time.Hour))
@@ -162,9 +172,9 @@ func startSpvClient(ctx *cli.Context) {
 						continue
 					}
 					isrb = true
+					_ = os.RemoveAll(path.Join(conf.RepoPath, "peers.json"))
 				}
 				wallet.Close()
-				_ = os.RemoveAll(path.Join(conf.RepoPath, "peers.json"))
 
 				wallet, _ = spvwallet.NewSPVWallet(conf)
 				if watchedAddr != "" {
@@ -184,14 +194,25 @@ func startSpvClient(ctx *cli.Context) {
 						continue
 					}
 				}
+
+				quit = make(chan struct{})
+				if isVote {
+					err = startAllianceService(ctx, wallet, voting, quit) // TODO:restart need update the wallet
+					if err != nil {
+						log.Fatalf("Failed to start alliance service: %v", err)
+					}
+				}
+
 				log.Info("The block header is not updated for a long time. Restart the service")
 				if isrb {
 					again = false
 				} else {
 					again = true
 				}
+				timer.Reset(td / 2)
 			} else {
 				again = false
+				timer.Reset(td)
 			}
 			lasth = sh.Height
 		}
@@ -200,13 +221,13 @@ func startSpvClient(ctx *cli.Context) {
 	}
 }
 
-func startAllianceService(ctx *cli.Context, wallet *spvwallet.SPVWallet) error {
+func startAllianceService(ctx *cli.Context, wallet *spvwallet.SPVWallet, voting chan *btc.BtcProof, quit chan struct{}) error {
 	conf, err := alliance.NewAlliaConfig(ctx.GlobalString(config.GetFlagName(config.AlliaConfigFile)))
 	if err != nil {
 		return err
 	}
-	voting := make(chan *btc.BtcProof, 10)
-	allia := sdk.NewOntologySdk()
+
+	allia := sdk.NewMultiChainSdk()
 	allia.NewRpcClient().SetAddress(conf.AllianceJsonRpcAddress)
 	acct, err := alliance.GetAccountByPassword(allia, conf.WalletFile, conf.WalletPwd)
 	if err != nil {
@@ -217,7 +238,7 @@ func startAllianceService(ctx *cli.Context, wallet *spvwallet.SPVWallet) error {
 		FirstN:       conf.AlliaObFirstN,
 		LoopWaitTime: conf.AlliaObLoopWaitTime,
 		WatchingKey:  conf.WatchingKey,
-	}, voting)
+	}, voting, quit)
 	go ob.Listen()
 
 	redeem, err := hex.DecodeString(conf.Redeem)
@@ -225,7 +246,7 @@ func startAllianceService(ctx *cli.Context, wallet *spvwallet.SPVWallet) error {
 		return fmt.Errorf("failed to decode redeem %s: %v", conf.Redeem, err)
 	}
 	v, err := alliance.NewVoter(allia, voting, wallet, redeem, acct, conf.GasPrice, conf.GasLimit, conf.WaitingDBPath,
-		conf.BlksToWait)
+		conf.BlksToWait, quit)
 
 	go v.Vote()
 	go v.WaitingRetry()
@@ -277,6 +298,10 @@ func checkLogFile(logLevel int) {
 }
 
 func main() {
+	if err := agent.Listen(agent.Options{}); err != nil {
+		log.Fatal(err)
+	}
+
 	if err := setupApp().Run(os.Args); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

@@ -75,7 +75,7 @@ func createBlockChain(bc *Blockchain) error {
 var MockCreationTime time.Time
 
 func TestNewBlockchain(t *testing.T) {
-	bc, err := NewBlockchain("", MockCreationTime, &chaincfg.MainNetParams)
+	bc, err := NewBlockchain("", MockCreationTime, &chaincfg.MainNetParams, false)
 	if err != nil {
 		t.Error(err)
 	}
@@ -95,7 +95,7 @@ func TestNewBlockchain(t *testing.T) {
 		t.Error("Blockchain failed to initialized with correct mainnet total work")
 	}
 	os.RemoveAll("headers.bin")
-	bc, err = NewBlockchain("", MockCreationTime, &chaincfg.TestNet3Params)
+	bc, err = NewBlockchain("", MockCreationTime, &chaincfg.TestNet3Params, false)
 	if err != nil {
 		t.Error(err)
 	}
@@ -115,7 +115,7 @@ func TestNewBlockchain(t *testing.T) {
 		t.Error("Blockchain failed to initialized with correct testnet total work")
 	}
 	os.RemoveAll("headers.bin")
-	bc, err = NewBlockchain("", MockCreationTime, &chaincfg.RegressionNetParams)
+	bc, err = NewBlockchain("", MockCreationTime, &chaincfg.RegressionNetParams, false)
 	if err != nil {
 		t.Error(err)
 	}
@@ -138,7 +138,7 @@ func TestNewBlockchain(t *testing.T) {
 }
 
 func TestBlockchain_CommitHeader(t *testing.T) {
-	bc, err := NewBlockchain("", MockCreationTime, &chaincfg.RegressionNetParams)
+	bc, err := NewBlockchain("", MockCreationTime, &chaincfg.RegressionNetParams, false)
 	if err != nil {
 		t.Error(err)
 	}
@@ -181,7 +181,7 @@ func TestBlockchain_CommitHeader(t *testing.T) {
 }
 
 func Test_Reorg(t *testing.T) {
-	bc, err := NewBlockchain("", MockCreationTime, &chaincfg.RegressionNetParams)
+	bc, err := NewBlockchain("", MockCreationTime, &chaincfg.RegressionNetParams, false)
 	if err != nil {
 		t.Error(err)
 	}
@@ -254,7 +254,7 @@ func Test_Reorg(t *testing.T) {
 }
 
 func TestBlockchain_GetCommonAncestor(t *testing.T) {
-	bc, err := NewBlockchain("", MockCreationTime, &chaincfg.RegressionNetParams)
+	bc, err := NewBlockchain("", MockCreationTime, &chaincfg.RegressionNetParams, false)
 	if err != nil {
 		t.Error(err)
 	}
@@ -290,7 +290,7 @@ func TestBlockchain_GetCommonAncestor(t *testing.T) {
 
 func TestBlockchain_CheckHeader(t *testing.T) {
 	params := &chaincfg.RegressionNetParams
-	bc, err := NewBlockchain("", MockCreationTime, params)
+	bc, err := NewBlockchain("", MockCreationTime, params, false)
 	if err != nil {
 		t.Error(err)
 	}
@@ -352,7 +352,7 @@ func TestBlockchain_CheckHeader(t *testing.T) {
 }
 
 func TestBlockchain_GetNPrevBlockHashes(t *testing.T) {
-	bc, err := NewBlockchain("", MockCreationTime, &chaincfg.RegressionNetParams)
+	bc, err := NewBlockchain("", MockCreationTime, &chaincfg.RegressionNetParams, false)
 	if err != nil {
 		t.Error(err)
 	}
@@ -476,7 +476,7 @@ func TestBlockchain_calcDiffAdjust(t *testing.T) {
 }
 
 func TestBlockchain_GetBlockLocator(t *testing.T) {
-	bc, err := NewBlockchain("", MockCreationTime, &chaincfg.RegressionNetParams)
+	bc, err := NewBlockchain("", MockCreationTime, &chaincfg.RegressionNetParams, false)
 	if err != nil {
 		t.Error(err)
 	}
@@ -519,7 +519,7 @@ func TestBlockchain_GetBlockLocator(t *testing.T) {
 }
 
 func TestBlockchain_GetEpoch(t *testing.T) {
-	bc, err := NewBlockchain("", MockCreationTime, &chaincfg.RegressionNetParams)
+	bc, err := NewBlockchain("", MockCreationTime, &chaincfg.RegressionNetParams, false)
 	if err != nil {
 		t.Error(err)
 	}
@@ -539,7 +539,7 @@ func TestBlockchain_GetEpoch(t *testing.T) {
 
 func TestBlockchain_calcRequiredWork(t *testing.T) {
 	params := &chaincfg.TestNet3Params
-	bc, err := NewBlockchain("", MockCreationTime, params)
+	bc, err := NewBlockchain("", MockCreationTime, params, false)
 	if err != nil {
 		t.Error(err)
 	}
@@ -642,7 +642,7 @@ func TestBlockchain_calcRequiredWork(t *testing.T) {
 }
 
 func TestBlockchain_Rollback(t *testing.T) {
-	bc, err := NewBlockchain("", MockCreationTime, &chaincfg.RegressionNetParams)
+	bc, err := NewBlockchain("", MockCreationTime, &chaincfg.RegressionNetParams, false)
 	if err != nil {
 		t.Error(err)
 		return

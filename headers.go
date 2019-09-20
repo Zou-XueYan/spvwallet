@@ -78,7 +78,7 @@ var (
 	BKTHeaders    = []byte("Headers")
 	BKTChainTip   = []byte("ChainTip")
 	KEYChainTip   = []byte("ChainTip")
-	HeadersHeight = []byte("HH")
+	//HeadersHeight = []byte("HH")
 )
 
 func NewHeaderDB(filePath string) (*HeaderDB, error) {
@@ -104,10 +104,10 @@ func NewHeaderDB(filePath string) (*HeaderDB, error) {
 		if err != nil {
 			return err
 		}
-		_, err = btx.CreateBucketIfNotExists(HeadersHeight)
-		if err != nil {
-			return err
-		}
+		//_, err = btx.CreateBucketIfNotExists(HeadersHeight)
+		//if err != nil {
+		//	return err
+		//}
 		return nil
 	})
 
@@ -161,13 +161,13 @@ func (h *HeaderDB) putToDB(sh StoredHeader, newBestHeader bool) error {
 		}
 
 		// add by zou
-		hhdrs := btx.Bucket(HeadersHeight)
-		heightKey := make([]byte, 4)
-		binary.BigEndian.PutUint32(heightKey, sh.Height)
-		err = hhdrs.Put(heightKey, hash.CloneBytes())
-		if err != nil {
-			return err
-		}
+		//hhdrs := btx.Bucket(HeadersHeight)
+		//heightKey := make([]byte, 4)
+		//binary.BigEndian.PutUint32(heightKey, sh.Height)
+		//err = hhdrs.Put(heightKey, hash.CloneBytes())
+		//if err != nil {
+		//	return err
+		//}
 
 		if newBestHeader {
 			tip := btx.Bucket(BKTChainTip)
@@ -285,74 +285,79 @@ func (h *HeaderDB) GetHeader(hash chainhash.Hash) (sh StoredHeader, err error) {
 }
 
 // add by zou
-func (h *HeaderDB) GetHeaderByHeight(height uint32) (sh StoredHeader, err error) {
-	h.lock.Lock()
-	defer h.lock.Unlock()
-
-	hash, err := h.cache.GetHashByHeight(height)
-	//fmt.Printf("Failed to get from cache: %v", err)
-	cachedHeader, cerr := h.cache.Get(hash)
-	if err == nil && cerr == nil {
-		return cachedHeader, nil
-	}
-
-	heightKey := make([]byte, 4)
-	binary.BigEndian.PutUint32(heightKey, height)
-
-	err = h.db.View(func(btx *bolt.Tx) error {
-		hdrs := btx.Bucket(BKTHeaders)
-		hhdrs := btx.Bucket(HeadersHeight)
-		hb := hhdrs.Get(heightKey)
-		if hb == nil {
-			return errors.New("Header's hash does not exist in database")
-		}
-		hash, err := chainhash.NewHash(hb)
-		if err != nil {
-			return fmt.Errorf("Failed to parse header hash: %v", err)
-		}
-
-		b := hdrs.Get(hash.CloneBytes())
-		if b == nil {
-			return errors.New("Header does not exist in database")
-		}
-		sh, err = deserializeHeader(b)
-		if err != nil {
-			return err
-		}
-		return nil
-	})
-	if err != nil {
-		return sh, err
-	}
-	return sh, nil
-}
+//func (h *HeaderDB) GetHeaderByHeight(height uint32) (sh StoredHeader, err error) {
+//	h.lock.Lock()
+//	defer h.lock.Unlock()
+//
+//	hash, err := h.cache.GetHashByHeight(height)
+//	//fmt.Printf("Failed to get from cache: %v", err)
+//	cachedHeader, cerr := h.cache.Get(hash)
+//	if err == nil && cerr == nil {
+//		return cachedHeader, nil
+//	}
+//
+//	heightKey := make([]byte, 4)
+//	binary.BigEndian.PutUint32(heightKey, height)
+//
+//	err = h.db.View(func(btx *bolt.Tx) error {
+//		hdrs := btx.Bucket(BKTHeaders)
+//		hhdrs := btx.Bucket(HeadersHeight)
+//		hb := hhdrs.Get(heightKey)
+//		if hb == nil {
+//			return errors.New("Header's hash does not exist in database")
+//		}
+//		hash, err := chainhash.NewHash(hb)
+//		if err != nil {
+//			return fmt.Errorf("Failed to parse header hash: %v", err)
+//		}
+//
+//		b := hdrs.Get(hash.CloneBytes())
+//		if b == nil {
+//			return errors.New("Header does not exist in database")
+//		}
+//		sh, err = deserializeHeader(b)
+//		if err != nil {
+//			return err
+//		}
+//		return nil
+//	})
+//	if err != nil {
+//		return sh, err
+//	}
+//	return sh, nil
+//}
 
 // add by zou
-func (h *HeaderDB) GetHeaderByHeightA(height uint32) (sh StoredHeader, err error) {
+func (h *HeaderDB) GetHeaderByHeight(height uint32) (sh StoredHeader, err error) {
+	best, err := h.GetBestHeader()
+	if err != nil {
+		return StoredHeader{}, err
+	} else if best.Height < height {
+		return StoredHeader{}, fmt.Errorf("best block height %d is lower than %d", best.Height, height)
+	}
+
 	h.lock.Lock()
 	defer h.lock.Unlock()
-	err = h.db.Update(func(btx *bolt.Tx) error {
-		hdrs := btx.Bucket(BKTHeaders)
-		err := hdrs.ForEach(func(k, v []byte) error {
-			sht, err := deserializeHeader(v)
+
+	ptr := best
+	for ptr.Height > height {
+		if err = h.db.View(func(btx *bolt.Tx) error {
+			hdrs := btx.Bucket(BKTHeaders)
+			b := hdrs.Get(ptr.Header.PrevBlock.CloneBytes())
+			if b == nil {
+				return errors.New("Header does not exist in database")
+			}
+			ptr, err = deserializeHeader(b)
 			if err != nil {
 				return err
 			}
-			if sht.Height == height {
-				sh = sht
-				if err != nil {
-					return err
-				}
-			}
 			return nil
-		})
-		if err != nil {
-			return err
+		}); err != nil {
+			return StoredHeader{}, fmt.Errorf("maybe %d not in db: %v", height, err)
 		}
-		return nil
-	})
+	}
 
-	return sh, nil
+	return ptr, nil
 }
 
 func (h *HeaderDB) GetBestHeader() (sh StoredHeader, err error) {
