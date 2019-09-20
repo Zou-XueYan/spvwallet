@@ -1,4 +1,4 @@
-package spvwallet
+package chain
 
 import (
 	"github.com/btcsuite/btcd/chaincfg"

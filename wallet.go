@@ -2,8 +2,9 @@ package spvwallet
 
 import (
 	"errors"
-	"github.com/Zou-XueYan/spvwallet/interface"
+	"github.com/Zou-XueYan/spvwallet/chain"
 	"github.com/Zou-XueYan/spvwallet/log"
+	"github.com/Zou-XueYan/spvwallet/netserv"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/peer"
@@ -11,23 +12,22 @@ import (
 	btc "github.com/btcsuite/btcutil"
 	hd "github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/btcsuite/btcwallet/wallet/txrules"
-	"io"
 	"time"
 )
 
 type SPVWallet struct {
 	params      *chaincfg.Params
-	feeProvider *FeeProvider
+	//feeProvider *FeeProvider
 	repoPath    string
-	Blockchain  *Blockchain
-	txstore     *TxStore
-	peerManager *PeerManager
-	wireService *WireService
+	Blockchain  *chain.Blockchain
+	//txstore     *TxStore
+	peerManager *netserv.PeerManager
+	wireService *netserv.WireService
 	//fPositives    chan *peer.Peer
 	//fpAccumulator map[int32]int32
-	creationDate time.Time
+	//creationDate time.Time
 	running      bool
-	config       *PeerManagerConfig
+	config       *netserv.PeerManagerConfig
 }
 
 const WALLET_VERSION = "0.1.0"
@@ -36,26 +36,26 @@ func NewSPVWallet(config *Config) (*SPVWallet, error) {
 	w := &SPVWallet{
 		repoPath:     config.RepoPath,
 		params:       config.Params,
-		creationDate: config.CreationDate,
-		feeProvider: NewFeeProvider(
-			config.MaxFee,
-			config.HighFee,
-			config.MediumFee,
-			config.LowFee,
-			config.FeeAPI.String(),
-			config.Proxy,
-		),
+		//creationDate: config.CreationDate,
+		//feeProvider: NewFeeProvider(
+		//	config.MaxFee,
+		//	config.HighFee,
+		//	config.MediumFee,
+		//	config.LowFee,
+		//	config.FeeAPI.String(),
+		//	config.Proxy,
+		//),
 		//fPositives:    make(chan *peer.Peer),
 		//fpAccumulator: make(map[int32]int32),
 	}
 
 	var err error
-	w.txstore, err = NewTxStore(w.params, config.DB)
+	//w.txstore, err = NewTxStore(w.params, config.DB)
 	if err != nil {
 		return nil, err
 	}
 
-	w.Blockchain, err = NewBlockchain(w.repoPath, w.creationDate, w.params, config.IsVote)
+	w.Blockchain, err = chain.NewBlockchain(w.repoPath, w.params, config.IsVote)
 	if err != nil {
 		return nil, err
 	}
@@ -63,15 +63,15 @@ func NewSPVWallet(config *Config) (*SPVWallet, error) {
 	if config.TrustedPeer != nil {
 		minSync = 1
 	}
-	wireConfig := &WireServiceConfig{
-		txStore:            w.txstore,
-		chain:              w.Blockchain,
-		walletCreationDate: w.creationDate,
-		minPeersForSync:    minSync,
-		params:             w.params,
+	wireConfig := &netserv.WireServiceConfig{
+		//txStore:            w.txstore,
+		Chain:              w.Blockchain,
+		//walletCreationDate: w.creationDate,
+		MinPeersForSync:    minSync,
+		Params:             w.params,
 	}
 
-	ws := NewWireService(wireConfig)
+	ws := netserv.NewWireService(wireConfig)
 	w.wireService = ws
 
 	getNewestBlock := func() (*chainhash.Hash, int32, error) {
@@ -83,7 +83,7 @@ func NewSPVWallet(config *Config) (*SPVWallet, error) {
 		return &h, int32(sh.Height), nil
 	}
 
-	w.config = &PeerManagerConfig{
+	w.config = &netserv.PeerManagerConfig{
 		UserAgentName:    config.UserAgent,
 		UserAgentVersion: WALLET_VERSION,
 		Params:           w.params,
@@ -97,7 +97,7 @@ func NewSPVWallet(config *Config) (*SPVWallet, error) {
 		w.config.TrustedPeer = config.TrustedPeer
 	}
 
-	w.peerManager, err = NewPeerManager(w.config)
+	w.peerManager, err = netserv.NewPeerManager(w.config)
 	if err != nil {
 		return nil, err
 	}
@@ -124,13 +124,13 @@ func (w *SPVWallet) Start() {
 //////////////
 
 // add by zou
-func (w *SPVWallet) GetUtxos() wallet.Utxos {
-	return w.txstore.Datastore.Utxos()
-}
+//func (w *SPVWallet) GetUtxos() wallet.Utxos {
+//	return w.txstore.Datastore.Utxos()
+//}
 
-func (w *SPVWallet) GetTxStore() *TxStore {
-	return w.txstore
-}
+//func (w *SPVWallet) GetTxStore() *TxStore {
+//	return w.txstore
+//}
 
 func (w *SPVWallet) CurrencyCode() string {
 	if w.params.Name == chaincfg.MainNetParams.Name {
@@ -259,148 +259,144 @@ func (w *SPVWallet) AddressToScript(addr btc.Address) ([]byte, error) {
 //	return list
 //}
 
-func (w *SPVWallet) Balance() (confirmed, unconfirmed int64) {
-	utxos, _ := w.txstore.Utxos().GetAll()
-	stxos, _ := w.txstore.Stxos().GetAll()
-	for _, utxo := range utxos {
-		if utxo.AtHeight > 0 {
-			confirmed += utxo.Value
-		} else {
-			if w.checkIfStxoIsConfirmed(utxo, stxos) {
-				confirmed += utxo.Value
-			} else {
-				unconfirmed += utxo.Value
-			}
-		}
-	}
-	return confirmed, unconfirmed
-}
+//func (w *SPVWallet) Balance() (confirmed, unconfirmed int64) {
+//	utxos, _ := w.txstore.Utxos().GetAll()
+//	stxos, _ := w.txstore.Stxos().GetAll()
+//	for _, utxo := range utxos {
+//		if utxo.AtHeight > 0 {
+//			confirmed += utxo.Value
+//		} else {
+//			if w.checkIfStxoIsConfirmed(utxo, stxos) {
+//				confirmed += utxo.Value
+//			} else {
+//				unconfirmed += utxo.Value
+//			}
+//		}
+//	}
+//	return confirmed, unconfirmed
+//}
+//
+//func (w *SPVWallet) Transactions() ([]wallet.Txn, error) {
+//	height, _ := w.ChainTip()
+//	txns, err := w.txstore.Txns().GetAll(false)
+//	if err != nil {
+//		return txns, err
+//	}
+//	for i, tx := range txns {
+//		var confirmations int32
+//		var status wallet.StatusCode
+//		confs := int32(height) - tx.Height + 1
+//		if tx.Height <= 0 {
+//			confs = tx.Height
+//		}
+//		switch {
+//		case confs < 0:
+//			status = wallet.StatusDead
+//		case confs == 0 && time.Since(tx.Timestamp) <= time.Hour*6:
+//			status = wallet.StatusUnconfirmed
+//		case confs == 0 && time.Since(tx.Timestamp) > time.Hour*6:
+//			status = wallet.StatusDead
+//		case confs > 0 && confs < 6:
+//			status = wallet.StatusPending
+//			confirmations = confs
+//		case confs > 5:
+//			status = wallet.StatusConfirmed
+//			confirmations = confs
+//		}
+//		tx.Confirmations = int64(confirmations)
+//		tx.Status = status
+//		txns[i] = tx
+//	}
+//	return txns, nil
+//}
+//
+//func (w *SPVWallet) GetTransaction(txid chainhash.Hash) (wallet.Txn, error) {
+//	txn, err := w.txstore.Txns().Get(txid)
+//	return txn, err
+//}
+//
+//func (w *SPVWallet) GetConfirmations(txid chainhash.Hash) (uint32, uint32, error) {
+//	txn, err := w.txstore.Txns().Get(txid)
+//	if err != nil {
+//		return 0, 0, err
+//	}
+//	if txn.Height == 0 {
+//		return 0, 0, nil
+//	}
+//	chainTip, _ := w.ChainTip()
+//	return chainTip - uint32(txn.Height) + 1, uint32(txn.Height), nil
+//}
 
-func (w *SPVWallet) Transactions() ([]wallet.Txn, error) {
-	height, _ := w.ChainTip()
-	txns, err := w.txstore.Txns().GetAll(false)
-	if err != nil {
-		return txns, err
-	}
-	for i, tx := range txns {
-		var confirmations int32
-		var status wallet.StatusCode
-		confs := int32(height) - tx.Height + 1
-		if tx.Height <= 0 {
-			confs = tx.Height
-		}
-		switch {
-		case confs < 0:
-			status = wallet.StatusDead
-		case confs == 0 && time.Since(tx.Timestamp) <= time.Hour*6:
-			status = wallet.StatusUnconfirmed
-		case confs == 0 && time.Since(tx.Timestamp) > time.Hour*6:
-			status = wallet.StatusDead
-		case confs > 0 && confs < 6:
-			status = wallet.StatusPending
-			confirmations = confs
-		case confs > 5:
-			status = wallet.StatusConfirmed
-			confirmations = confs
-		}
-		tx.Confirmations = int64(confirmations)
-		tx.Status = status
-		txns[i] = tx
-	}
-	return txns, nil
-}
-
-func (w *SPVWallet) GetTransaction(txid chainhash.Hash) (wallet.Txn, error) {
-	txn, err := w.txstore.Txns().Get(txid)
-	return txn, err
-}
-
-func (w *SPVWallet) GetConfirmations(txid chainhash.Hash) (uint32, uint32, error) {
-	txn, err := w.txstore.Txns().Get(txid)
-	if err != nil {
-		return 0, 0, err
-	}
-	if txn.Height == 0 {
-		return 0, 0, nil
-	}
-	chainTip, _ := w.ChainTip()
-	return chainTip - uint32(txn.Height) + 1, uint32(txn.Height), nil
-}
-
-func (w *SPVWallet) checkIfStxoIsConfirmed(utxo wallet.Utxo, stxos []wallet.Stxo) bool {
-	for _, stxo := range stxos {
-		if !stxo.Utxo.WatchOnly {
-			if stxo.SpendTxid.IsEqual(&utxo.Op.Hash) {
-				if stxo.SpendHeight > 0 {
-					return true
-				} else {
-					return w.checkIfStxoIsConfirmed(stxo.Utxo, stxos)
-				}
-			} else if stxo.Utxo.IsEqual(&utxo) {
-				if stxo.Utxo.AtHeight > 0 {
-					return true
-				} else {
-					return false
-				}
-			}
-		}
-	}
-	return false
-}
+//func (w *SPVWallet) checkIfStxoIsConfirmed(utxo wallet.Utxo, stxos []wallet.Stxo) bool {
+//	for _, stxo := range stxos {
+//		if !stxo.Utxo.WatchOnly {
+//			if stxo.SpendTxid.IsEqual(&utxo.Op.Hash) {
+//				if stxo.SpendHeight > 0 {
+//					return true
+//				} else {
+//					return w.checkIfStxoIsConfirmed(stxo.Utxo, stxos)
+//				}
+//			} else if stxo.Utxo.IsEqual(&utxo) {
+//				if stxo.Utxo.AtHeight > 0 {
+//					return true
+//				} else {
+//					return false
+//				}
+//			}
+//		}
+//	}
+//	return false
+//}
 
 func (w *SPVWallet) Params() *chaincfg.Params {
 	return w.params
 }
 
-func (w *SPVWallet) AddTransactionListener(callback func(wallet.TransactionCallback)) {
-	w.txstore.listeners = append(w.txstore.listeners, callback)
-}
+//func (w *SPVWallet) AddTransactionListener(callback func(wallet.TransactionCallback)) {
+//	w.txstore.listeners = append(w.txstore.listeners, callback)
+//}
 
 func (w *SPVWallet) ChainTip() (uint32, chainhash.Hash) {
 	var ch chainhash.Hash
-	sh, err := w.Blockchain.db.GetBestHeader()
+	sh, err := w.Blockchain.BestBlock()
 	if err != nil {
 		return 0, ch
 	}
 	return sh.Height, sh.Header.BlockHash()
 }
-func (w *SPVWallet) AddWatchedScript(script []byte) error {
-	err := w.txstore.WatchedScripts().Put(script)
-	w.txstore.PopulateAdrs()
+//func (w *SPVWallet) AddWatchedScript(script []byte) error {
+//	err := w.txstore.WatchedScripts().Put(script)
+//	w.txstore.PopulateAdrs()
+//
+//	if w.running {
+//		w.wireService.MsgChan() <- updateFiltersMsg{}
+//	}
+//	return err
+//}
 
-	if w.running {
-		w.wireService.MsgChan() <- updateFiltersMsg{}
-	}
-	return err
-}
+//func (w *SPVWallet) DeleteWatchedScript(script []byte) error {
+//	err := w.txstore.WatchedScripts().Delete(script)
+//	w.txstore.PopulateAdrs()
+//
+//	w.wireService.MsgChan() <- updateFiltersMsg{}
+//	return err
+//}
 
-func (w *SPVWallet) DeleteWatchedScript(script []byte) error {
-	err := w.txstore.WatchedScripts().Delete(script)
-	w.txstore.PopulateAdrs()
-
-	w.wireService.MsgChan() <- updateFiltersMsg{}
-	return err
-}
-
-func (w *SPVWallet) AddWatchedAddress(addr btc.Address) error {
-	script, err := w.AddressToScript(addr)
-	if err != nil {
-		return err
-	}
-	return w.AddWatchedScript(script)
-}
-
-func (w *SPVWallet) DeleteWatchedAddr(addr btc.Address) error {
-	script, err := w.AddressToScript(addr)
-	if err != nil {
-		return err
-	}
-	return w.DeleteWatchedScript(script)
-}
-
-func (w *SPVWallet) DumpHeaders(writer io.Writer) {
-	w.Blockchain.db.Print(writer)
-}
+//func (w *SPVWallet) AddWatchedAddress(addr btc.Address) error {
+//	script, err := w.AddressToScript(addr)
+//	if err != nil {
+//		return err
+//	}
+//	return w.AddWatchedScript(script)
+//}
+//
+//func (w *SPVWallet) DeleteWatchedAddr(addr btc.Address) error {
+//	script, err := w.AddressToScript(addr)
+//	if err != nil {
+//		return err
+//	}
+//	return w.DeleteWatchedScript(script)
+//}
 
 func (w *SPVWallet) Close() {
 	if w.running {
@@ -414,6 +410,6 @@ func (w *SPVWallet) Close() {
 
 func (w *SPVWallet) ReSyncBlockchain(fromDate time.Time) {
 	w.Blockchain.Rollback(fromDate)
-	w.txstore.PopulateAdrs()
+	//w.txstore.PopulateAdrs()
 	w.wireService.Resync()
 }

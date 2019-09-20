@@ -1,7 +1,7 @@
 // Copyright (C) 2015-2016 The Lightning Network Developers
 // Copyright (c) 2016-2017 The OpenBazaar Developers
 
-package spvwallet
+package chain
 
 import (
 	"errors"
@@ -36,12 +36,11 @@ type Blockchain struct {
 	lock         *sync.Mutex
 	params       *chaincfg.Params
 	db           Headers
-	crationDate  time.Time
 	HeaderUpdate chan uint32
 	IsOpen       bool
 }
 
-func NewBlockchain(filePath string, walletCreationDate time.Time, params *chaincfg.Params, isOpen bool) (*Blockchain, error) {
+func NewBlockchain(filePath string, params *chaincfg.Params, isOpen bool) (*Blockchain, error) {
 	hdb, err := NewHeaderDB(filePath)
 	if err != nil {
 		return nil, err
@@ -50,7 +49,6 @@ func NewBlockchain(filePath string, walletCreationDate time.Time, params *chainc
 		lock:         new(sync.Mutex),
 		params:       params,
 		db:           hdb,
-		crationDate:  walletCreationDate,
 		HeaderUpdate: make(chan uint32, 100),
 		IsOpen:       isOpen,
 	}
@@ -58,7 +56,7 @@ func NewBlockchain(filePath string, walletCreationDate time.Time, params *chainc
 	h, err := b.db.Height()
 	if h == 0 || err != nil {
 		log.Info("Initializing headers db with checkpoints")
-		checkpoint := GetCheckpoint(walletCreationDate, params)
+		checkpoint := GetCheckpoint(time.Now(), params)
 		// Put the checkpoint to the db
 		sh := StoredHeader{
 			Header:    checkpoint.Header,
@@ -361,7 +359,7 @@ func (b *Blockchain) GetCommonAncestor(bestHeader, prevBestHeader StoredHeader) 
 func (b *Blockchain) Rollback(t time.Time) error {
 	b.lock.Lock()
 	defer b.lock.Unlock()
-	checkpoint := GetCheckpoint(b.crationDate, b.params)
+	checkpoint := GetCheckpoint(time.Now(), b.params)
 	checkPointHash := checkpoint.Header.BlockHash()
 	sh, err := b.db.GetBestHeader()
 	if err != nil {
@@ -416,22 +414,6 @@ func (b *Blockchain) GetHeaderByHeight(height uint32) (sh StoredHeader, err erro
 		return sh, err
 	}
 	return sh, nil
-
-	//best, err := b.db.GetBestHeader()
-	//if err != nil {
-	//	return StoredHeader{}, err
-	//} else if best.Height < height {
-	//	return StoredHeader{}, fmt.Errorf("best block height %d is lower than %d", best.Height, height)
-	//}
-	//
-	//ptr := best
-	//for ptr.Height > height {
-	//	if ptr, err = b.db.GetPreviousHeader(ptr.Header); err != nil {
-	//		return StoredHeader{}, fmt.Errorf("maybe %d not in db: %v", height, err)
-	//	}
-	//}
-
-	//return ptr, nil
 }
 
 func (b *Blockchain) GetHeader(hash *chainhash.Hash) (StoredHeader, error) {

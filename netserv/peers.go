@@ -1,4 +1,4 @@
-package spvwallet
+package netserv
 
 import (
 	"errors"
@@ -148,9 +148,9 @@ func NewPeerManager(config *PeerManagerConfig) (*PeerManager, error) {
 	listeners.OnVerAck = pm.onVerack
 	listeners.OnAddr = pm.onAddr
 	listeners.OnHeaders = pm.onHeaders
-	listeners.OnMerkleBlock = pm.onMerkleBlock
-	listeners.OnInv = pm.onInv
-	listeners.OnTx = pm.onTx
+	//listeners.OnMerkleBlock = pm.onMerkleBlock
+	//listeners.OnInv = pm.onInv
+	//listeners.OnTx = pm.onTx
 	listeners.OnReject = pm.onReject
 
 	pm.peerConfig = &peer.Config{
@@ -350,24 +350,24 @@ func (pm *PeerManager) onHeaders(p *peer.Peer, msg *wire.MsgHeaders) {
 	}
 }
 
-func (pm *PeerManager) onMerkleBlock(p *peer.Peer, msg *wire.MsgMerkleBlock) {
-	log.Tracef("---------------onMerkleBlock %s--------", msg.Header.BlockHash().String())
-	if pm.msgChan != nil {
-		pm.msgChan <- merkleBlockMsg{msg, p}
-	}
-}
+//func (pm *PeerManager) onMerkleBlock(p *peer.Peer, msg *wire.MsgMerkleBlock) {
+//	log.Tracef("---------------onMerkleBlock %s--------", msg.Header.BlockHash().String())
+//	if pm.msgChan != nil {
+//		pm.msgChan <- merkleBlockMsg{msg, p}
+//	}
+//}
 
-func (pm *PeerManager) onInv(p *peer.Peer, msg *wire.MsgInv) {
-	if pm.msgChan != nil {
-		pm.msgChan <- invMsg{msg, p}
-	}
-}
+//func (pm *PeerManager) onInv(p *peer.Peer, msg *wire.MsgInv) {
+//	if pm.msgChan != nil {
+//		pm.msgChan <- invMsg{msg, p}
+//	}
+//}
 
-func (pm *PeerManager) onTx(p *peer.Peer, msg *wire.MsgTx) {
-	if pm.msgChan != nil {
-		pm.msgChan <- txMsg{msg, p, nil}
-	}
-}
+//func (pm *PeerManager) onTx(p *peer.Peer, msg *wire.MsgTx) {
+//	if pm.msgChan != nil {
+//		pm.msgChan <- txMsg{msg, p, nil}
+//	}
+//}
 
 func (pm *PeerManager) onReject(p *peer.Peer, msg *wire.MsgReject) {
 	log.Warnf("Received reject message from peer %d: Code: %s, Hash %s, Reason: %s", int(p.ID()), msg.Code.String(), msg.Hash.String(), msg.Reason)
