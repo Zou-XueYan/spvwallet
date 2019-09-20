@@ -7,6 +7,7 @@ import (
 	peerpkg "github.com/btcsuite/btcd/peer"
 	"github.com/btcsuite/btcd/wire"
 	"net"
+	"os"
 	"time"
 )
 
@@ -289,10 +290,16 @@ func (ws *WireService) startSync(syncPeer *peerpkg.Peer) {
 		// start downloading merkle blocks so we learn of the wallet's transactions. We'll use a
 		// buffer of one week to make sure we don't miss anything.
 		log.Infof("Starting chain download from %s", bestPeer)
-		if bestBlock.Header.Timestamp.Before(ws.walletCreationDate.Add(-time.Hour * 24 * 7)) {
-			bestPeer.PushGetHeadersMsg(locator, &ws.zeroHash)
-		} else {
-			bestPeer.PushGetBlocksMsg(locator, &ws.zeroHash)
+		//if bestBlock.Header.Timestamp.Before(ws.walletCreationDate.Add(-time.Hour * 24 * 7)) {
+		//	bestPeer.PushGetHeadersMsg(locator, &ws.zeroHash)
+		//} else {
+		//	bestPeer.PushGetBlocksMsg(locator, &ws.zeroHash)
+		//}
+
+		err = bestPeer.PushGetBlocksMsg(locator, &ws.zeroHash)
+		if err != nil {
+			log.Errorf("failed to PushGetBlocksMsg: %v", err)
+			os.Exit(1)
 		}
 		log.Tracef("-----------------sync peer is %s------------------", ws.syncPeer.String())
 	} else {
