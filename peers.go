@@ -351,7 +351,6 @@ func (pm *PeerManager) onHeaders(p *peer.Peer, msg *wire.MsgHeaders) {
 }
 
 func (pm *PeerManager) onMerkleBlock(p *peer.Peer, msg *wire.MsgMerkleBlock) {
-	log.Tracef("---------------onMerkleBlock %s--------", msg.Header.BlockHash().String())
 	if pm.msgChan != nil {
 		pm.msgChan <- merkleBlockMsg{msg, p}
 	}
