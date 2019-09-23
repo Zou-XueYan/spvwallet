@@ -364,6 +364,36 @@ func (ws *WireService) handleHeadersMsg(hmsg *headersMsg) {
 	badHeaders := 0
 	for _, blockHeader := range msg.Headers {
 		_, _, height, err := ws.chain.CommitHeader(*blockHeader)
+		// If this is an orphan block which doesn't connect to the chain, it's possible
+		// that we might be synced on the longest chain, but not the most-work chain like
+		// we should be. To make sure this isn't the case, let's sync from the peer who
+		// sent us this orphan block.
+		if err == OrphanHeaderError && ws.Current() {
+			log.Debug("Received orphan header, checking peer for more blocks")
+			state.requestQueue = []*wire.InvVect{}
+			state.requestedBlocks = make(map[chainhash.Hash]struct{})
+			ws.requestedBlocks = make(map[chainhash.Hash]struct{})
+			ws.startSync(peer)
+			return
+		} else if err == OrphanHeaderError && !ws.Current() {
+			// The sync peer sent us an orphan header in the middle of a sync. This could
+			// just be the last block in the batch which represents the tip of the chain.
+			// In either case let's adjust the score for this peer downwards. If it goes
+			// negative it means he's slamming us with blocks that don't fit in our chain
+			// so disconnect.
+			state.blockScore--
+			if state.blockScore < 0 {
+				log.Warnf("Disconnecting from peer %s because he sent us too many bad blocks", peer)
+				peer.Disconnect()
+				return
+			}
+			log.Warnf("Received unrequested block from peer %s", peer)
+			return
+		} else if err != nil {
+			log.Error(err)
+			return
+		}
+
 		if err != nil {
 			badHeaders++
 			log.Errorf("Commit header error: %s", err.Error())
@@ -664,20 +694,32 @@ func (ws *WireService) handleHeadersMsg(hmsg *headersMsg) {
 //}
 
 func (ws *WireService) handleInvMsg(imsg *invMsg) {
-	content := fmt.Sprintf("invlist from %s:", imsg.peer.String())
+	peer := imsg.peer
+
+	content := fmt.Sprintf("invlist from %s:", peer.String())
+	blockstr := ""
 	for _, iv := range imsg.inv.InvList {
 		switch iv.Type {
 		case wire.InvTypeFilteredBlock:
 			fallthrough
 		case wire.InvTypeBlock:
 			content += "\n\tblock:" + iv.Hash.String()
+			blockstr += iv.Hash.String() + " "
 		case wire.InvTypeTx:
 			content += "\n\ttx:" + iv.Hash.String()
 		default:
 			continue
 		}
 	}
-	log.Tracef("^^^^^^^^^^^^^^%s\n", content)
+	log.Tracef("%s\n", content)
+
+	locator := ws.chain.GetBlockLocator()
+	err := peer.PushGetHeadersMsg(locator, &ws.zeroHash)
+	if err != nil {
+		log.Warnf("Failed to send getheaders message to peer %s: %v", peer.Addr(), err)
+		return
+	}
+	log.Infof("Requesting headers: %s", blockstr)
 }
 
 //func (ws *WireService) handleTxMsg(tmsg *txMsg) {
