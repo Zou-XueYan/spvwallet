@@ -1,6 +1,7 @@
 package netserv
 
 import (
+	"fmt"
 	"github.com/Zou-XueYan/spvwallet/chain"
 	"github.com/Zou-XueYan/spvwallet/log"
 	"github.com/btcsuite/btcd/chaincfg"
@@ -43,10 +44,10 @@ type headersMsg struct {
 
 // invMsg packages a bitcoin inv message and the peer it came from together
 // so the handler has access to that information.
-//type invMsg struct {
-//	inv  *wire.MsgInv
-//	peer *peerpkg.Peer
-//}
+type invMsg struct {
+	inv  *wire.MsgInv
+	peer *peerpkg.Peer
+}
 
 //type heightAndTime struct {
 //	height    uint32
@@ -64,17 +65,17 @@ type headersMsg struct {
 //type updateFiltersMsg struct{}
 
 type WireServiceConfig struct {
-	Params             *chaincfg.Params
-	Chain              *chain.Blockchain
+	Params *chaincfg.Params
+	Chain  *chain.Blockchain
 	//txStore            *TxStore
 	//walletCreationDate time.Time
-	MinPeersForSync    int
+	MinPeersForSync int
 }
 
 // peerSyncState stores additional information that the WireService tracks
 // about a peer.
 type peerSyncState struct {
-	syncCandidate   bool
+	syncCandidate bool
 	//requestQueue    []*wire.InvVect
 	//requestedTxns   map[chainhash.Hash]heightAndTime
 	//requestedBlocks map[chainhash.Hash]struct{}
@@ -83,29 +84,29 @@ type peerSyncState struct {
 }
 
 type WireService struct {
-	params             *chaincfg.Params
-	chain              *chain.Blockchain
-	syncPeer           *peerpkg.Peer
-	peerStates         map[*peerpkg.Peer]*peerSyncState
+	params     *chaincfg.Params
+	chain      *chain.Blockchain
+	syncPeer   *peerpkg.Peer
+	peerStates map[*peerpkg.Peer]*peerSyncState
 	//requestedTxns      map[chainhash.Hash]heightAndTime
 	//requestedBlocks    map[chainhash.Hash]struct{}
 	//mempool            map[chainhash.Hash]struct{}
-	msgChan            chan interface{}
-	quit               chan struct{}
-	minPeersForSync    int
-	zeroHash           chainhash.Hash
+	msgChan         chan interface{}
+	quit            chan struct{}
+	minPeersForSync int
+	zeroHash        chainhash.Hash
 }
 
 func NewWireService(config *WireServiceConfig) *WireService {
 	return &WireService{
-		params:             config.Params,
-		chain:              config.Chain,
-		minPeersForSync:    config.MinPeersForSync,
-		peerStates:         make(map[*peerpkg.Peer]*peerSyncState),
+		params:          config.Params,
+		chain:           config.Chain,
+		minPeersForSync: config.MinPeersForSync,
+		peerStates:      make(map[*peerpkg.Peer]*peerSyncState),
 		//requestedTxns:      make(map[chainhash.Hash]heightAndTime),
 		//requestedBlocks:    make(map[chainhash.Hash]struct{}),
 		//mempool:            make(map[chainhash.Hash]struct{}),
-		msgChan:            make(chan interface{}),
+		msgChan: make(chan interface{}),
 	}
 }
 
@@ -127,24 +128,19 @@ out:
 	for {
 		select {
 		case m := <-ws.msgChan:
-			log.Tracef("****************GetMsg %d peers***********", len(ws.peerStates))
 			switch msg := m.(type) {
 			case newPeerMsg:
-				log.Tracef("****************newPeerMsg:%s***********", msg.peer.String())
 				ws.handleNewPeerMsg(msg.peer)
 			case donePeerMsg:
-				log.Tracef("****************donePeerMsg:%s***********", msg.peer.String())
 				ws.handleDonePeerMsg(msg.peer)
 			case headersMsg:
-				log.Tracef("****************headersMsg:%d***********", len(msg.headers.Headers))
 				ws.handleHeadersMsg(&msg)
 			//case merkleBlockMsg:
 			//	log.Tracef("****************merkleBlockMsg:%s: %s***********",
 			//		msg.merkleBlock.Header.BlockHash().String(), msg.peer.String())
 			//	ws.handleMerkleBlockMsg(&msg)
-			//case invMsg:
-			//	log.Tracef("****************invMsg:%d: %s***********", len(msg.inv.InvList), msg.peer.String())
-			//	ws.handleInvMsg(&msg)
+			case invMsg:
+				ws.handleInvMsg(&msg)
 			//case txMsg:
 			//	log.Tracef("****************txMsg %s: %s***********", msg.tx.TxHash().String(), msg.peer.String())
 			//	ws.handleTxMsg(&msg)
@@ -172,7 +168,7 @@ func (ws *WireService) Resync() {
 func (ws *WireService) handleNewPeerMsg(peer *peerpkg.Peer) {
 	// Initialize the peer state
 	ws.peerStates[peer] = &peerSyncState{
-		syncCandidate:   ws.isSyncCandidate(peer),
+		syncCandidate: ws.isSyncCandidate(peer),
 		//requestedTxns:   make(map[chainhash.Hash]heightAndTime),
 		//requestedBlocks: make(map[chainhash.Hash]struct{}),
 	}
@@ -208,7 +204,7 @@ func (ws *WireService) isSyncCandidate(peer *peerpkg.Peer) bool {
 	} else {
 		// The peer is not a candidate for sync if it's not a full node
 		nodeServices := peer.Services()
-		if nodeServices & wire.SFNodeNetwork != wire.SFNodeNetwork {
+		if nodeServices&wire.SFNodeNetwork != wire.SFNodeNetwork {
 			return false
 		}
 	}
@@ -666,6 +662,23 @@ func (ws *WireService) handleHeadersMsg(hmsg *headersMsg) {
 //	}
 //	log.Tracef("*******************inv here********************")
 //}
+
+func (ws *WireService) handleInvMsg(imsg *invMsg) {
+	content := fmt.Sprintf("invlist from %s:", imsg.peer.String())
+	for _, iv := range imsg.inv.InvList {
+		switch iv.Type {
+		case wire.InvTypeFilteredBlock:
+			fallthrough
+		case wire.InvTypeBlock:
+			content += "\n\tblock:" + iv.Hash.String()
+		case wire.InvTypeTx:
+			content += "\n\ttx:" + iv.Hash.String()
+		default:
+			continue
+		}
+	}
+	log.Tracef("^^^^^^^^^^^^^^%s\n", content)
+}
 
 //func (ws *WireService) handleTxMsg(tmsg *txMsg) {
 //	tx := tmsg.tx

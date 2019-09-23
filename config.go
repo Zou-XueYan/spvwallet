@@ -18,7 +18,6 @@ import (
 const (
 	DEFAULT_LOG_LEVEL        = 2
 	DEFAULT_CONFIG_FILE_NAME = "./rest_conf.json"
-
 )
 
 var (
@@ -208,4 +207,3 @@ func NewRestConfig(fileName string) (*RestConfig, error) {
 	}
 	return cfg, nil
 }
-

@@ -16,26 +16,26 @@ import (
 )
 
 type SPVWallet struct {
-	params      *chaincfg.Params
+	params *chaincfg.Params
 	//feeProvider *FeeProvider
-	repoPath    string
-	Blockchain  *chain.Blockchain
+	repoPath   string
+	Blockchain *chain.Blockchain
 	//txstore     *TxStore
 	peerManager *netserv.PeerManager
 	wireService *netserv.WireService
 	//fPositives    chan *peer.Peer
 	//fpAccumulator map[int32]int32
 	//creationDate time.Time
-	running      bool
-	config       *netserv.PeerManagerConfig
+	running bool
+	config  *netserv.PeerManagerConfig
 }
 
 const WALLET_VERSION = "0.1.0"
 
 func NewSPVWallet(config *Config) (*SPVWallet, error) {
 	w := &SPVWallet{
-		repoPath:     config.RepoPath,
-		params:       config.Params,
+		repoPath: config.RepoPath,
+		params:   config.Params,
 		//creationDate: config.CreationDate,
 		//feeProvider: NewFeeProvider(
 		//	config.MaxFee,
@@ -65,10 +65,10 @@ func NewSPVWallet(config *Config) (*SPVWallet, error) {
 	}
 	wireConfig := &netserv.WireServiceConfig{
 		//txStore:            w.txstore,
-		Chain:              w.Blockchain,
+		Chain: w.Blockchain,
 		//walletCreationDate: w.creationDate,
-		MinPeersForSync:    minSync,
-		Params:             w.params,
+		MinPeersForSync: minSync,
+		Params:          w.params,
 	}
 
 	ws := netserv.NewWireService(wireConfig)
@@ -364,6 +364,7 @@ func (w *SPVWallet) ChainTip() (uint32, chainhash.Hash) {
 	}
 	return sh.Height, sh.Header.BlockHash()
 }
+
 //func (w *SPVWallet) AddWatchedScript(script []byte) error {
 //	err := w.txstore.WatchedScripts().Put(script)
 //	w.txstore.PopulateAdrs()

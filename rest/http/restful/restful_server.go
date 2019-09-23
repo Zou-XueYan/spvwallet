@@ -56,19 +56,11 @@ func InitRestServer(web Web, port uint64) ApiServer {
 func (this *restServer) registryRestServerAction(web Web) {
 	postMethodMap := map[string]Action{
 		common.QUERYHEADERBYHEIGHT: {name: common.ACTION_QUERYHEADERBYHEIGHT, handler: web.QueryHeaderByHeight},
-		common.QUERYUTXOS:          {name: common.ACTION_QUERYUTXOS, handler: web.QueryUtxos},
-		common.CHANGEADDRESS:       {name: common.ACTION_CHANGEADDRESS, handler: web.ChangeAddress},
-		common.UNLOCKUTXO:          {name: common.ACTION_UNLOCKUTXO, handler: web.UnlockUtxo},
-		common.GETFEEPERBYTE:       {name: common.ACTION_GETFEEPERBYTE, handler: web.GetFeePerByte},
-		common.BROADCASTTX:         {name: common.ACTION_BROADCASTTX, handler: web.BroadcastTx},
 		common.ROLLBACK:            {name: common.ACTION_ROLLBACK, handler: web.Rollback},
-		common.DELUTXO:             {name: common.ACTION_DELUTXO, handler: web.DelUtxo},
 	}
 
 	getMethodMap := map[string]Action{
-		common.GETALLADDRESS:    {name: common.ACTION_GETALLADDRESS, handler: web.GetAllAddress},
 		common.GETCURRENTHEIGHT: {name: common.ACTION_GETCURRENTHEIGHT, handler: web.GetCurrentHeight},
-		common.GETALLUTXOS:      {name: common.ACTION_GETALLUTXOS, handler: web.GetAllUtxos},
 	}
 
 	this.postMap = postMethodMap

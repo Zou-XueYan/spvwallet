@@ -75,9 +75,9 @@ type HeaderDB struct {
 }
 
 var (
-	BKTHeaders    = []byte("Headers")
-	BKTChainTip   = []byte("ChainTip")
-	KEYChainTip   = []byte("ChainTip")
+	BKTHeaders  = []byte("Headers")
+	BKTChainTip = []byte("ChainTip")
+	KEYChainTip = []byte("ChainTip")
 	//HeadersHeight = []byte("HH")
 )
 
