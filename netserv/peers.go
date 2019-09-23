@@ -148,7 +148,7 @@ func NewPeerManager(config *PeerManagerConfig) (*PeerManager, error) {
 	listeners.OnVerAck = pm.onVerack
 	listeners.OnAddr = pm.onAddr
 	listeners.OnHeaders = pm.onHeaders
-	//listeners.OnMerkleBlock = pm.onMerkleBlock
+	listeners.OnMerkleBlock = pm.onMerkleBlock
 	listeners.OnInv = pm.onInv
 	//listeners.OnTx = pm.onTx
 	listeners.OnReject = pm.onReject
@@ -350,12 +350,11 @@ func (pm *PeerManager) onHeaders(p *peer.Peer, msg *wire.MsgHeaders) {
 	}
 }
 
-//func (pm *PeerManager) onMerkleBlock(p *peer.Peer, msg *wire.MsgMerkleBlock) {
-//	log.Tracef("---------------onMerkleBlock %s--------", msg.Header.BlockHash().String())
-//	if pm.msgChan != nil {
-//		pm.msgChan <- merkleBlockMsg{msg, p}
-//	}
-//}
+func (pm *PeerManager) onMerkleBlock(p *peer.Peer, msg *wire.MsgMerkleBlock) {
+	if pm.msgChan != nil {
+		pm.msgChan <- merkleBlockMsg{msg, p}
+	}
+}
 
 func (pm *PeerManager) onInv(p *peer.Peer, msg *wire.MsgInv) {
 	if pm.msgChan != nil {

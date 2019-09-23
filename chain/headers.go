@@ -65,6 +65,10 @@ type StoredHeader struct {
 	totalWork *big.Int
 }
 
+func (sh *StoredHeader) GetTotalWork() *big.Int {
+	return sh.totalWork
+}
+
 // HeaderDB implements Headers using bolt DB
 type HeaderDB struct {
 	lock      *sync.Mutex
