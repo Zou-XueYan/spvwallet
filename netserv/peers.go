@@ -149,7 +149,7 @@ func NewPeerManager(config *PeerManagerConfig) (*PeerManager, error) {
 	listeners.OnAddr = pm.onAddr
 	listeners.OnHeaders = pm.onHeaders
 	//listeners.OnMerkleBlock = pm.onMerkleBlock
-	//listeners.OnInv = pm.onInv
+	listeners.OnInv = pm.onInv
 	//listeners.OnTx = pm.onTx
 	listeners.OnReject = pm.onReject
 
@@ -357,11 +357,11 @@ func (pm *PeerManager) onHeaders(p *peer.Peer, msg *wire.MsgHeaders) {
 //	}
 //}
 
-//func (pm *PeerManager) onInv(p *peer.Peer, msg *wire.MsgInv) {
-//	if pm.msgChan != nil {
-//		pm.msgChan <- invMsg{msg, p}
-//	}
-//}
+func (pm *PeerManager) onInv(p *peer.Peer, msg *wire.MsgInv) {
+	if pm.msgChan != nil {
+		pm.msgChan <- invMsg{msg, p}
+	}
+}
 
 //func (pm *PeerManager) onTx(p *peer.Peer, msg *wire.MsgTx) {
 //	if pm.msgChan != nil {
