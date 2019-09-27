@@ -79,12 +79,14 @@ func startSpvClient(ctx *cli.Context) {
 		conf.TrustedPeer, _ = net.ResolveTCPAddr("tcp", tp+":"+conf.Params.DefaultPort)
 	}
 
-	wallet, _ := spvwallet.NewSPVWallet(conf)
+	wallet, err1 := spvwallet.NewSPVWallet(conf)
+	if err1 != nil {
+		log.Errorf("Failed to new a wallet: %v", err1)
+		os.Exit(1)
+	}
 	wallet.Start()
 	defer wallet.Close()
 
-	voting := make(chan *btc.BtcProof, 10)
-	quit := make(chan struct{})
 
 	var restServer restful.ApiServer
 	var err error
@@ -96,8 +98,11 @@ func startSpvClient(ctx *cli.Context) {
 		}
 	}
 
+	//var ob *alliance.Observer
+	voting := make(chan *btc.BtcProof, 10)
+	var voter *alliance.Voter
 	if isVote {
-		err := startAllianceService(ctx, wallet, voting, quit) // TODO:restart need update the wallet
+		_, voter, err = startAllianceService(ctx, wallet, voting) // TODO:restart need update the wallet
 		if err != nil {
 			log.Fatalf("Failed to start alliance service: %v", err)
 		}
@@ -126,7 +131,7 @@ func startSpvClient(ctx *cli.Context) {
 				log.Debugf("Restart now!!!")
 				if isVote {
 					log.Debugf("stop voter")
-					close(quit)
+					voter.Stop()
 				}
 				if restServer != nil {
 					log.Debugf("stop rest service")
@@ -156,12 +161,10 @@ func startSpvClient(ctx *cli.Context) {
 					}
 				}
 
-				quit = make(chan struct{})
 				if isVote {
-					err = startAllianceService(ctx, wallet, voting, quit) // TODO:restart need update the wallet
-					if err != nil {
-						log.Fatalf("Failed to start alliance service: %v", err)
-					}
+					voter.SetWallet(wallet)
+					go voter.Vote()
+					go voter.WaitingRetry()
 				}
 
 				log.Info("The block header is not updated for a long time. Restart the service")
@@ -197,37 +200,40 @@ func startServer(ctx *cli.Context, wallet *spvwallet.SPVWallet) (restful.ApiServ
 	return restServer, nil
 }
 
-func startAllianceService(ctx *cli.Context, wallet *spvwallet.SPVWallet, voting chan *btc.BtcProof, quit chan struct{}) error {
+func startAllianceService(ctx *cli.Context, wallet *spvwallet.SPVWallet, voting chan *btc.BtcProof) (*alliance.Observer, *alliance.Voter, error) {
 	conf, err := alliance.NewAlliaConfig(ctx.GlobalString(spvwallet.GetFlagName(spvwallet.AlliaConfigFile)))
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 
 	allia := sdk.NewMultiChainSdk()
 	allia.NewRpcClient().SetAddress(conf.AllianceJsonRpcAddress)
 	acct, err := alliance.GetAccountByPassword(allia, conf.WalletFile, conf.WalletPwd)
 	if err != nil {
-		return fmt.Errorf("GetAccountByPassword failed: %v", err)
+		return nil, nil, fmt.Errorf("GetAccountByPassword failed: %v", err)
 	}
 
 	ob := alliance.NewObserver(allia, &alliance.ObConfig{
 		FirstN:       conf.AlliaObFirstN,
 		LoopWaitTime: conf.AlliaObLoopWaitTime,
 		WatchingKey:  conf.WatchingKey,
-	}, voting, quit)
+	}, voting)
 	go ob.Listen()
 
 	redeem, err := hex.DecodeString(conf.Redeem)
 	if err != nil {
-		return fmt.Errorf("failed to decode redeem %s: %v", conf.Redeem, err)
+		return ob, nil, fmt.Errorf("failed to decode redeem %s: %v", conf.Redeem, err)
 	}
 	v, err := alliance.NewVoter(allia, voting, wallet, redeem, acct, conf.GasPrice, conf.GasLimit, conf.WaitingDBPath,
-		conf.BlksToWait, quit)
+		conf.BlksToWait)
+	if err != nil {
+		return ob, v, fmt.Errorf("failed to new a voter: %v", err)
+	}
 
 	go v.Vote()
 	go v.WaitingRetry()
 
-	return nil
+	return ob, v, nil
 }
 
 func waitToExit() {

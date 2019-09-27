@@ -3,7 +3,6 @@ package alliance
 import (
 	"encoding/hex"
 	"github.com/Zou-XueYan/spvwallet/log"
-	"github.com/btcsuite/btcd/wire"
 	sdk "github.com/ontio/multi-chain-go-sdk"
 	"github.com/ontio/multi-chain-go-sdk/common"
 	mc "github.com/ontio/multi-chain/common"
@@ -21,19 +20,18 @@ type Observer struct {
 	voting chan *btc.BtcProof
 	allia  *sdk.MultiChainSdk
 	conf   *ObConfig
-	quit   chan struct{}
 }
 
-func NewObserver(allia *sdk.MultiChainSdk, conf *ObConfig, voting chan *btc.BtcProof, quit chan struct{}) *Observer {
+func NewObserver(allia *sdk.MultiChainSdk, conf *ObConfig, voting chan *btc.BtcProof) *Observer {
 	return &Observer{
 		voting: voting,
 		conf:   conf,
 		allia:  allia,
-		quit:   quit,
 	}
 }
 
 func (ob *Observer) Listen() {
+	log.Info("starting observing")
 START:
 	top, err := ob.allia.GetCurrentBlockHeight()
 	if err != nil {
@@ -96,9 +94,9 @@ START:
 				log.Infof("[Observer] total %d transactions captured this time", count)
 			}
 			top = newTop
-		case <-ob.quit:
-			log.Info("stopping observing alliance network")
-			return
+		//case <-ob.quit:
+		//	log.Info("stopping observing alliance network")
+		//	return
 		}
 	}
 }
@@ -114,23 +112,22 @@ func (ob *Observer) checkEvents(events []*common.SmartContactEvent, h uint32) in
 
 			name, ok := states[0].(string)
 			if ok && name == ob.conf.WatchingKey {
-				btcProofBytes, err := hex.DecodeString(states[1].(string))
+				btcProofBytes, err := hex.DecodeString(states[2].(string))
 				if err != nil {
+					log.Errorf("failed to decode hex: %v", err)
 					continue
 				}
 
 				btcProof := btc.BtcProof{}
 				err = btcProof.Deserialization(mc.NewZeroCopySource(btcProofBytes))
 				if err != nil {
+					log.Errorf("failed to deserialization: %v", err)
 					continue
 				}
 
-				mtx := wire.NewMsgTx(wire.TxVersion)
-				txid := mtx.TxHash()
-
 				ob.voting <- &btcProof
 				count++
-				log.Infof("[Observer] captured: height is %d, txid is %s", h, txid.String())
+				log.Infof("[Observer] captured one proof when height is %d", h)
 			}
 		}
 	}

@@ -77,7 +77,7 @@ var (
 
 	RestartDuration = cli.IntFlag{
 		Name:  "restart",
-		Usage: "When the header is not updated for 'restart' min, restrat the service. default 10 min",
+		Usage: "When the header is not updated for 'restart' min, restrat the service. default 15 min",
 		Value: 15,
 	}
 

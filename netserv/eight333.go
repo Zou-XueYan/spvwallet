@@ -179,6 +179,10 @@ func (ws *WireService) Resync() {
 	ws.startSync(ws.syncPeer)
 }
 
+func (ws *WireService) ResyncWithNil() {
+	ws.startSync(nil)
+}
+
 func (ws *WireService) handleNewPeerMsg(peer *peerpkg.Peer) {
 	// Initialize the peer state
 	ws.peerStates[peer] = &peerSyncState{

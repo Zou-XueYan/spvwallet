@@ -30,7 +30,7 @@ type Voter struct {
 }
 
 func NewVoter(allia *sdk.MultiChainSdk, voting chan *btc.BtcProof, wallet *spvwallet.SPVWallet, redeem []byte,
-	acct *sdk.Account, gasPrice uint64, gasLimit uint64, dbFile string, blksToWait uint64, quit chan struct{}) (*Voter, error) {
+	acct *sdk.Account, gasPrice uint64, gasLimit uint64, dbFile string, blksToWait uint64) (*Voter, error) {
 	wdb, err := NewWaitingDB(dbFile)
 	if err != nil {
 		return nil, err
@@ -45,7 +45,7 @@ func NewVoter(allia *sdk.MultiChainSdk, voting chan *btc.BtcProof, wallet *spvwa
 		gasPrice:      gasPrice,
 		watingDB:      wdb,
 		blksToWait:    blksToWait,
-		quit:          quit,
+		quit:          make(chan struct{}),
 	}, nil
 }
 
@@ -241,4 +241,13 @@ func (v *Voter) checkTxOuts(tx *wire.MsgTx) error {
 	}
 
 	return nil
+}
+
+func (v *Voter) SetWallet(wallet *spvwallet.SPVWallet) {
+	v.wallet = wallet
+}
+
+func (v *Voter) Stop() {
+	close(v.quit)
+	v.watingDB.Close()
 }

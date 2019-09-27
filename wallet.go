@@ -414,3 +414,7 @@ func (w *SPVWallet) ReSyncBlockchain(fromDate time.Time) {
 	//w.txstore.PopulateAdrs()
 	w.wireService.Resync()
 }
+
+func (w *SPVWallet) ReSync() {
+	w.wireService.ResyncWithNil()
+}
