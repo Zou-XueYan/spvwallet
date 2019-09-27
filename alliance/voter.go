@@ -62,7 +62,7 @@ func (v *Voter) Vote() {
 					err = v.watingDB.Put(txid[:], item)
 					if err != nil {
 						log.Errorf("[Voter] failed to write %s into db: %v", mtx.TxHash().String(), err)
-					} else if err = v.watingDB.MarkVotedTx(txid[:]); err != nil {
+					} else if err = v.watingDB.MarkVotedTx(txid[:]); err == nil {
 						log.Infof("[Voter] write %s into db and marked: %s", txid.String(), val.Error())
 					} else {
 						log.Errorf("[Voter] failed to mark %s: %v", txid.String(), err)
@@ -244,6 +244,7 @@ func (v *Voter) checkTxOuts(tx *wire.MsgTx) error {
 }
 
 func (v *Voter) SetWallet(wallet *spvwallet.SPVWallet) {
+	v.quit = make(chan struct{})
 	v.wallet = wallet
 }
 
