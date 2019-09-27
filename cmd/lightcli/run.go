@@ -162,9 +162,7 @@ func startSpvClient(ctx *cli.Context) {
 				}
 
 				if isVote {
-					voter.SetWallet(wallet)
-					go voter.Vote()
-					go voter.WaitingRetry()
+					voter.Restart(wallet)
 				}
 
 				log.Info("The block header is not updated for a long time. Restart the service")

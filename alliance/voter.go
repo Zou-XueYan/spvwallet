@@ -243,12 +243,20 @@ func (v *Voter) checkTxOuts(tx *wire.MsgTx) error {
 	return nil
 }
 
-func (v *Voter) SetWallet(wallet *spvwallet.SPVWallet) {
+func (v *Voter) Restart(wallet *spvwallet.SPVWallet) {
 	v.quit = make(chan struct{})
 	v.wallet = wallet
+	//fp := v.watingDB.filePath
+	//v.watingDB, err = NewWaitingDB(fp)
+	//if err != nil {
+	//	return err
+	//}
+
+	go v.Vote()
+	go v.WaitingRetry()
 }
 
 func (v *Voter) Stop() {
 	close(v.quit)
-	v.watingDB.Close()
+	//v.watingDB.Close()
 }
