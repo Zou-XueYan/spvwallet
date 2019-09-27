@@ -88,10 +88,10 @@ func startSpvClient(ctx *cli.Context) {
 	defer wallet.Close()
 
 
-	var restServer restful.ApiServer
+	//var restServer restful.ApiServer
 	var err error
 	if ctx.GlobalInt(spvwallet.RunRest.Name) == 1 {
-		restServer, err = startServer(ctx, wallet)
+		_, err = startServer(ctx, wallet)
 		if err != nil {
 			log.Fatalf("Failed to start rest service: %v", err)
 			os.Exit(1)
@@ -100,9 +100,9 @@ func startSpvClient(ctx *cli.Context) {
 
 	//var ob *alliance.Observer
 	voting := make(chan *btc.BtcProof, 10)
-	var voter *alliance.Voter
+	//var voter *alliance.Voter
 	if isVote {
-		_, voter, err = startAllianceService(ctx, wallet, voting) // TODO:restart need update the wallet
+		_, _, err = startAllianceService(ctx, wallet, voting) // TODO:restart need update the wallet
 		if err != nil {
 			log.Fatalf("Failed to start alliance service: %v", err)
 		}
@@ -129,14 +129,14 @@ func startSpvClient(ctx *cli.Context) {
 			if lasth >= sh.Height {
 				isrb := false
 				log.Debugf("Restart now!!!")
-				if isVote {
-					log.Debugf("stop voter")
-					voter.Stop()
-				}
-				if restServer != nil {
-					log.Debugf("stop rest service")
-					restServer.Stop()
-				}
+				//if isVote {
+				//	log.Debugf("stop voter")
+				//	voter.Stop()
+				//}
+				//if restServer != nil {
+				//	log.Debugf("stop rest service")
+				//	restServer.Stop()
+				//}
 
 				if again {
 					log.Debugf("It happened TWICE!!!")
@@ -146,24 +146,26 @@ func startSpvClient(ctx *cli.Context) {
 						continue
 					}
 					isrb = true
-					_ = os.RemoveAll(path.Join(conf.RepoPath, "peers.json"))
-				}
-				wallet.Close()
-
-				wallet, _ = spvwallet.NewSPVWallet(conf)
-				wallet.Start()
-
-				if ctx.GlobalInt(spvwallet.RunRest.Name) == 1 {
-					restServer, err = startServer(ctx, wallet)
-					if err != nil {
-						log.Fatalf("Failed to restart rest service: %v", err)
-						continue
-					}
+					//_ = os.RemoveAll(path.Join(conf.RepoPath, "peers.json"))
 				}
 
-				if isVote {
-					voter.Restart(wallet)
-				}
+				wallet.ReSync()
+				//wallet.Close()
+				//
+				//wallet, _ = spvwallet.NewSPVWallet(conf)
+				//wallet.Start()
+
+				//if ctx.GlobalInt(spvwallet.RunRest.Name) == 1 {
+				//	restServer, err = startServer(ctx, wallet)
+				//	if err != nil {
+				//		log.Fatalf("Failed to restart rest service: %v", err)
+				//		continue
+				//	}
+				//}
+
+				//if isVote {
+				//	voter.Restart(wallet)
+				//}
 
 				log.Info("The block header is not updated for a long time. Restart the service")
 				if isrb {
