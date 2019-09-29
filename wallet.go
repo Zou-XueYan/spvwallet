@@ -9,6 +9,7 @@ import (
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/peer"
 	"github.com/btcsuite/btcd/txscript"
+	"github.com/btcsuite/btcd/wire"
 	btc "github.com/btcsuite/btcutil"
 	hd "github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/btcsuite/btcwallet/wallet/txrules"
@@ -417,4 +418,12 @@ func (w *SPVWallet) ReSyncBlockchain(fromDate time.Time) {
 
 func (w *SPVWallet) ReSync() {
 	w.wireService.ResyncWithNil()
+}
+
+func (s *SPVWallet) Broadcast(tx *wire.MsgTx) error {
+	log.Debugf("Broadcasting tx %s to peers", tx.TxHash().String())
+	for _, p := range s.peerManager.ConnectedPeers() {
+		p.QueueMessageWithEncoding(tx, nil, wire.WitnessEncoding)
+	}
+	return nil
 }

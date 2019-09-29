@@ -122,3 +122,45 @@ func (serv *Service) Rollback(params map[string]interface{}) map[string]interfac
 	}
 	return m
 }
+
+func (serv *Service) BroadcastTx(params map[string]interface{}) map[string]interface{} {
+	req := &common.BroadcastReq{}
+	resp := &common.Response{}
+
+	var txid string
+	err := utils.ParseParams(req, params)
+	if err != nil {
+		resp.Error = restful.INVALID_PARAMS
+		resp.Desc = err.Error()
+		log.Errorf("BroadcastTx: decode params failed, err: %s", err)
+	} else {
+		btx, err := hex.DecodeString(req.Tx)
+		if err != nil {
+			resp.Error = restful.INTERNAL_ERROR
+			resp.Desc = err.Error()
+			log.Errorf("BroadcastTx: decode hex failed: %v", err)
+		} else {
+			mtx := wire.NewMsgTx(wire.TxVersion)
+			if err := mtx.BtcDecode(bytes.NewBuffer(btx), wire.ProtocolVersion, wire.LatestEncoding); err != nil {
+				resp.Error = restful.INTERNAL_ERROR
+				resp.Desc = err.Error()
+				log.Errorf("BroadcastTx: decode msgtx failed: %v", err)
+			} else {
+				txid = mtx.TxHash().String()
+				if err := serv.wallet.Broadcast(mtx); err != nil {
+					resp.Error = restful.INTERNAL_ERROR
+					resp.Desc = err.Error()
+					log.Errorf("BroadcastTx: broadcast msgtx failed: %v", err)
+				}
+			}
+		}
+	}
+
+	m, err := utils.RefactorResp(resp, resp.Error)
+	if err != nil {
+		log.Errorf("BroadcastTx: failed, err: %s", err)
+	} else {
+		log.Infof("BroadcastTx: resp success, txid is %s", txid)
+	}
+	return m
+}
