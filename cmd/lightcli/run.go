@@ -102,7 +102,7 @@ func startSpvClient(ctx *cli.Context) {
 	voting := make(chan *btc.BtcProof, 10)
 	//var voter *alliance.Voter
 	if isVote {
-		_, _, err = startAllianceService(ctx, wallet, voting) // TODO:restart need update the wallet
+		_, _, err = startAllianceService(ctx, wallet, voting)
 		if err != nil {
 			log.Fatalf("Failed to start alliance service: %v", err)
 		}
