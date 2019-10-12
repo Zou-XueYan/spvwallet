@@ -3,12 +3,12 @@ package netserv
 import (
 	"github.com/Zou-XueYan/spvwallet/chain"
 	"github.com/Zou-XueYan/spvwallet/log"
-	"github.com/btcsuite/btcd/wire"
-	"net"
-	"time"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	peerpkg "github.com/btcsuite/btcd/peer"
+	"github.com/btcsuite/btcd/wire"
+	"net"
+	"time"
 )
 
 const (
@@ -63,10 +63,10 @@ type txMsg struct {
 type updateFiltersMsg struct{}
 
 type WireServiceConfig struct {
-	Params             *chaincfg.Params
-	Chain              *chain.Blockchain
+	Params *chaincfg.Params
+	Chain  *chain.Blockchain
 	//walletCreationDate time.Time
-	MinPeersForSync    int
+	MinPeersForSync int
 }
 
 // peerSyncState stores additional information that the WireService tracks
@@ -81,31 +81,31 @@ type peerSyncState struct {
 }
 
 type WireService struct {
-	params             *chaincfg.Params
-	chain              *chain.Blockchain
+	params *chaincfg.Params
+	chain  *chain.Blockchain
 	//walletCreationDate time.Time
-	syncPeer           *peerpkg.Peer
-	peerStates         map[*peerpkg.Peer]*peerSyncState
+	syncPeer   *peerpkg.Peer
+	peerStates map[*peerpkg.Peer]*peerSyncState
 	//requestedTxns      map[chainhash.Hash]heightAndTime
-	requestedBlocks    map[chainhash.Hash]struct{}
+	requestedBlocks map[chainhash.Hash]struct{}
 	//mempool            map[chainhash.Hash]struct{}
-	msgChan            chan interface{}
-	quit               chan struct{}
-	minPeersForSync    int
-	zeroHash           chainhash.Hash
+	msgChan         chan interface{}
+	quit            chan struct{}
+	minPeersForSync int
+	zeroHash        chainhash.Hash
 }
 
 func NewWireService(config *WireServiceConfig) *WireService {
 	return &WireService{
-		params:             config.Params,
-		chain:              config.Chain,
+		params: config.Params,
+		chain:  config.Chain,
 		//walletCreationDate: config.walletCreationDate,
-		minPeersForSync:    config.MinPeersForSync,
-		peerStates:         make(map[*peerpkg.Peer]*peerSyncState),
+		minPeersForSync: config.MinPeersForSync,
+		peerStates:      make(map[*peerpkg.Peer]*peerSyncState),
 		//requestedTxns:      make(map[chainhash.Hash]heightAndTime),
-		requestedBlocks:    make(map[chainhash.Hash]struct{}),
+		requestedBlocks: make(map[chainhash.Hash]struct{}),
 		//mempool:            make(map[chainhash.Hash]struct{}),
-		msgChan:            make(chan interface{}),
+		msgChan: make(chan interface{}),
 	}
 }
 

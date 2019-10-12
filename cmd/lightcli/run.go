@@ -87,7 +87,6 @@ func startSpvClient(ctx *cli.Context) {
 	wallet.Start()
 	defer wallet.Close()
 
-
 	//var restServer restful.ApiServer
 	var err error
 	if ctx.GlobalInt(spvwallet.RunRest.Name) == 1 {
@@ -100,9 +99,10 @@ func startSpvClient(ctx *cli.Context) {
 
 	//var ob *alliance.Observer
 	voting := make(chan *btc.BtcProof, 10)
+	txchan := make(chan *alliance.ToSignItem, 10)
 	//var voter *alliance.Voter
 	if isVote {
-		_, _, err = startAllianceService(ctx, wallet, voting)
+		_, _, err = startAllianceService(ctx, wallet, voting, txchan, conf.Params)
 		if err != nil {
 			log.Fatalf("Failed to start alliance service: %v", err)
 		}
@@ -200,7 +200,8 @@ func startServer(ctx *cli.Context, wallet *spvwallet.SPVWallet) (restful.ApiServ
 	return restServer, nil
 }
 
-func startAllianceService(ctx *cli.Context, wallet *spvwallet.SPVWallet, voting chan *btc.BtcProof) (*alliance.Observer, *alliance.Voter, error) {
+func startAllianceService(ctx *cli.Context, wallet *spvwallet.SPVWallet, voting chan *btc.BtcProof,
+	txchan chan *alliance.ToSignItem, params *chaincfg.Params) (*alliance.Observer, *alliance.Voter, error) {
 	conf, err := alliance.NewAlliaConfig(ctx.GlobalString(spvwallet.GetFlagName(spvwallet.AlliaConfigFile)))
 	if err != nil {
 		return nil, nil, err
@@ -214,10 +215,11 @@ func startAllianceService(ctx *cli.Context, wallet *spvwallet.SPVWallet, voting 
 	}
 
 	ob := alliance.NewObserver(allia, &alliance.ObConfig{
-		FirstN:       conf.AlliaObFirstN,
-		LoopWaitTime: conf.AlliaObLoopWaitTime,
-		WatchingKey:  conf.WatchingKey,
-	}, voting)
+		FirstN:            conf.AlliaObFirstN,
+		LoopWaitTime:      conf.AlliaObLoopWaitTime,
+		WatchingKey:       conf.WatchingKey,
+		WatchingMakeTxKey: conf.WatchingMakeTxKey,
+	}, voting, txchan)
 	go ob.Listen()
 
 	redeem, err := hex.DecodeString(conf.Redeem)
@@ -232,6 +234,12 @@ func startAllianceService(ctx *cli.Context, wallet *spvwallet.SPVWallet, voting 
 
 	go v.Vote()
 	go v.WaitingRetry()
+
+	signer, err := alliance.NewSigner(conf.BtcPrivk, txchan, acct, conf.GasPrice, conf.GasLimit, allia, params)
+	if err != nil {
+		return ob, v, fmt.Errorf("failed to new a signer: %v", err)
+	}
+	go signer.Signing()
 
 	return ob, v, nil
 }

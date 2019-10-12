@@ -57,7 +57,7 @@ func (this *restServer) registryRestServerAction(web Web) {
 	postMethodMap := map[string]Action{
 		common.QUERYHEADERBYHEIGHT: {name: common.ACTION_QUERYHEADERBYHEIGHT, handler: web.QueryHeaderByHeight},
 		common.ROLLBACK:            {name: common.ACTION_ROLLBACK, handler: web.Rollback},
-		common.BROADCASTTX: {name: common.ACTION_BROADCASTTX, handler: web.BroadcastTx},
+		common.BROADCASTTX:         {name: common.ACTION_BROADCASTTX, handler: web.BroadcastTx},
 	}
 
 	getMethodMap := map[string]Action{

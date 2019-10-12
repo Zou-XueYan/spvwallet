@@ -4,14 +4,14 @@ const (
 	QUERYHEADERBYHEIGHT = "/api/v1/queryheaderbyheight"
 	GETCURRENTHEIGHT    = "/api/v1/getcurrentheight"
 	ROLLBACK            = "/api/v1/rollback"
-	BROADCASTTX = "/api/v1/broadcasttx"
+	BROADCASTTX         = "/api/v1/broadcasttx"
 )
 
 const (
 	ACTION_QUERYHEADERBYHEIGHT = "queryheaderbyheight"
 	ACTION_GETCURRENTHEIGHT    = "getcurrentheight"
 	ACTION_ROLLBACK            = "rollback"
-	ACTION_BROADCASTTX = "broadcasttx"
+	ACTION_BROADCASTTX         = "broadcasttx"
 )
 
 type Response struct {

@@ -21,12 +21,12 @@ func TestNewObserver(t *testing.T) {
 	allia.NewRpcClient().SetAddress(RpcAddr)
 	voting := make(chan *btc.BtcProof, 10)
 
-	quit := make(chan struct{})
+	txc := make(chan *ToSignItem)
 	NewObserver(allia, &ObConfig{
 		FirstN:       10,
 		LoopWaitTime: 2,
 		WatchingKey:  "notifyBtcProof",
-	}, voting, quit)
+	}, voting, txc)
 }
 
 func TestObserver_Listen(t *testing.T) {
@@ -34,12 +34,12 @@ func TestObserver_Listen(t *testing.T) {
 	allia.NewRpcClient().SetAddress(RpcAddr)
 	voting := make(chan *btc.BtcProof, 10)
 
-	quit := make(chan struct{})
+	txc := make(chan *ToSignItem)
 	ob := NewObserver(allia, &ObConfig{
 		FirstN:       10,
 		LoopWaitTime: 2,
 		WatchingKey:  "notifyBtcProof",
-	}, voting, quit)
+	}, voting, txc)
 	log.InitLog(2, log.Stdout)
 
 	go ob.Listen()
@@ -51,13 +51,14 @@ func TestObserver_checkEvents(t *testing.T) {
 	allia := sdk.NewMultiChainSdk()
 	allia.NewRpcClient().SetAddress(RpcAddr)
 	voting := make(chan *btc.BtcProof, 10)
-	quit := make(chan struct{})
 
+	txc := make(chan *ToSignItem, 10)
 	ob := NewObserver(allia, &ObConfig{
-		FirstN:       10,
-		LoopWaitTime: 2,
-		WatchingKey:  "notifyBtcProof",
-	}, voting, quit)
+		FirstN:            10,
+		LoopWaitTime:      2,
+		WatchingKey:       "notifyBtcProof",
+		WatchingMakeTxKey: "btcTxToRelay",
+	}, voting, txc)
 	log.InitLog(2, log.Stdout)
 
 	sink := mcommon.NewZeroCopySink(nil)
@@ -69,7 +70,15 @@ func TestObserver_checkEvents(t *testing.T) {
 		ContractAddress: "1234",
 		States: []interface{}{
 			"notifyBtcProof",
+			"txid",
 			hex.EncodeToString(sink.Bytes()),
+		},
+	}, &common.NotifyEventInfo{
+		ContractAddress: "1234",
+		States: []interface{}{
+			"btcTxToRelay",
+			usignedTx,
+			redeem,
 		},
 	})
 
@@ -80,75 +89,20 @@ func TestObserver_checkEvents(t *testing.T) {
 		Notify:      notifys,
 	}
 
-	cnt := ob.checkEvents(events, 1)
+	cnt, cntTx := ob.checkEvents(events, 1)
 	if cnt != 1 {
 		t.Fatalf("wrong num: %d, should be 1", cnt)
+	}
+	if cntTx != 1 {
+		t.Fatalf("wrong tx num: %d, should be 1", cntTx)
 	}
 	item := <-voting
 	if item.Tx == nil {
 		t.Fatalf("wrong item")
 	}
-}
-
-func TestSth1(t *testing.T) {
-	allia := sdk.NewMultiChainSdk()
-	allia.NewRpcClient().SetAddress("http://192.168.3.144:20336")
-
-	acct, err := GetAccountByPassword(allia, "/Users/zou/go/src/github.com/Zou-XueYan/spvwallet/cmd/lightcli/wallet.dat", "passwordtest")
-	if err != nil {
-		t.Errorf("GetAccountByPassword failed: %v", err)
+	txItem := <-txc
+	if txItem.Mtx.TxHash().String() == "" {
+		t.Fatalf("wrong tx item")
 	}
-
-	addr58 := acct.Address.ToBase58()
-	//fmt.Printf("addr from wallet: %s\n", addr58)
-
-	tx, err := allia.Native.Ccm.NewVoteTransaction(0, addr58, "8d86a6ab2c2f34d0a8ae9a90af2c82d12ab242914403e133a79209744ccf7e46")
-	if err != nil {
-		t.Fatalf("failed to new vote tx: %v", err)
-	}
-	err = allia.SignToTransaction(tx, acct)
-	if err != nil {
-		t.Fatalf("failed to sign: %v", err)
-	}
-
-	s, err := allia.SendTransaction(tx)
-	fmt.Printf("state is %d, error is %v\n", s, err)
-
-	//address, err := mcommon.AddressFromBase58(addr58)
-	//if err != nil {
-	//	t.Fatalf("failed to get addr: %v", err)
-	//}
-
-	//serv := native.NewNativeService(nil, tx, 0, 0, mcommon.Uint256{}, 0, nil, false, nil)
-	//fmt.Printf("check witness: %v\n", serv.CheckWitness(address))
-
-
-	//addrs, err := tx.GetSignatureAddresses()
-	//if err != nil {
-	//	t.Fatalf("failed to get sig addrs")
-	//}
-
-	//str := "51f19e6af2eead230e0f15490069e45122f7171e"
-	//addrr, _ := mcommon.AddressFromHexString(str)
-	//fmt.Println(addrr.ToBase58())
-
-	//fmt.Println(address.ToHexString())
-	//
-	//for _, a := range addrs {
-	//	if a == address {
-	//		fmt.Println("got!!!")
-	//		//return
-	//	}
-	//}
-	//fmt.Printf("no!!!!\n")
-
-	//var sink = new(mcommon.ZeroCopySink)
-	//err = tx.Serialization(sink) // SDK的序列化
-	//if err != nil {
-	//	t.Fatalf("serialize error:%s", err)
-	//}
-	//
-	//newtx, err := types.TransactionFromRawBytes(sink.Bytes()) // multi-chain 的反序列化
-	//addresses, err := newtx.GetSignatureAddresses()
-	//fmt.Printf("GetSignatureAddresses: %d, len of sigs: %d \n", len(addresses), len(newtx.Sigs))
+	fmt.Println(txItem.Mtx.TxHash().String())
 }

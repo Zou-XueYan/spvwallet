@@ -81,7 +81,7 @@ func (v *Voter) Vote() {
 			txid := mtx.TxHash()
 			log.Infof("[Voter] transaction %s passed the verify, next vote for it", txid.String())
 
-			txHash, err := v.allia.Native.Ccm.Vote(BTC_CHAINID, v.acct.Address.ToBase58(), txid.String(), v.acct)
+			txHash, err := v.allia.Native.Ccm.Vote(v.acct.Address.ToBase58(), txid.String(), v.acct)
 			if err != nil {
 				log.Errorf("[Voter] invokeNativeContract error: %v", err)
 				continue

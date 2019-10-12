@@ -26,6 +26,11 @@ type ToVoteItem struct {
 	BlocksToWait uint64
 }
 
+type ToSignItem struct {
+	Mtx    *wire.MsgTx
+	Redeem []byte
+}
+
 // func about OP_RETURN
 func ifCanResolve(paramOutput *wire.TxOut, value int64) error {
 	script := paramOutput.PkScript
@@ -62,6 +67,8 @@ type AlliaConfig struct {
 	Redeem                 string
 	WaitingDBPath          string
 	BlksToWait             uint64
+	BtcPrivk               string
+	WatchingMakeTxKey      string
 }
 
 func NewAlliaConfig(file string) (*AlliaConfig, error) {
