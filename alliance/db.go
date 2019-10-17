@@ -15,17 +15,17 @@ var (
 	BKTVoted   = []byte("voted")
 )
 
-type WatingDB struct {
+type WaitingDB struct {
 	lock     *sync.Mutex
 	db       *bolt.DB
 	filePath string
 }
 
-func NewWaitingDB(filePath string) (*WatingDB, error) {
+func NewWaitingDB(filePath string) (*WaitingDB, error) {
 	if !strings.Contains(filePath, ".bin") {
 		filePath = path.Join(filePath, "waiting.bin")
 	}
-	w := new(WatingDB)
+	w := new(WaitingDB)
 	db, err := bolt.Open(filePath, 0644, &bolt.Options{InitialMmapSize: 500000})
 	if err != nil {
 		return nil, err
@@ -53,7 +53,7 @@ func NewWaitingDB(filePath string) (*WatingDB, error) {
 	return w, nil
 }
 
-func (w *WatingDB) Put(txid []byte, item *btc.BtcProof) error {
+func (w *WaitingDB) Put(txid []byte, item *btc.BtcProof) error {
 	w.lock.Lock()
 	defer w.lock.Unlock()
 
@@ -73,7 +73,7 @@ func (w *WatingDB) Put(txid []byte, item *btc.BtcProof) error {
 	})
 }
 
-func (w *WatingDB) Get(txid []byte) (p *btc.BtcProof, err error) {
+func (w *WaitingDB) Get(txid []byte) (p *btc.BtcProof, err error) {
 	w.lock.Lock()
 	defer w.lock.Unlock()
 
@@ -96,7 +96,7 @@ func (w *WatingDB) Get(txid []byte) (p *btc.BtcProof, err error) {
 	return
 }
 
-func (w *WatingDB) GetUnderHeightAndDelte(height uint32) ([]*btc.BtcProof, [][]byte, error) {
+func (w *WaitingDB) GetUnderHeightAndDelete(height uint32) ([]*btc.BtcProof, [][]byte, error) {
 	w.lock.Lock()
 	defer w.lock.Unlock()
 
@@ -117,15 +117,15 @@ func (w *WatingDB) GetUnderHeightAndDelte(height uint32) ([]*btc.BtcProof, [][]b
 			}
 			return nil
 		})
+		if err != nil {
+			return err
+		}
 
 		for _, k := range keys {
 			err = bw.Delete(k)
 			if err != nil {
 				return err
 			}
-		}
-		if err != nil {
-			return err
 		}
 		return nil
 	})
@@ -136,7 +136,7 @@ func (w *WatingDB) GetUnderHeightAndDelte(height uint32) ([]*btc.BtcProof, [][]b
 	return arr, keys, nil
 }
 
-func (w *WatingDB) MarkVotedTx(txid []byte) error {
+func (w *WaitingDB) MarkVotedTx(txid []byte) error {
 	w.lock.Lock()
 	defer w.lock.Unlock()
 
@@ -150,7 +150,7 @@ func (w *WatingDB) MarkVotedTx(txid []byte) error {
 	})
 }
 
-func (w *WatingDB) CheckIfVoted(txid []byte) bool {
+func (w *WaitingDB) CheckIfVoted(txid []byte) bool {
 	w.lock.Lock()
 	defer w.lock.Unlock()
 
@@ -166,7 +166,23 @@ func (w *WatingDB) CheckIfVoted(txid []byte) bool {
 	return exist
 }
 
-func (w *WatingDB) Close() {
+func (w *WaitingDB) CheckIfWaiting(txid []byte) bool {
+	w.lock.Lock()
+	defer w.lock.Unlock()
+
+	exist := false
+	_ = w.db.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket(BKTWaiting)
+		if bucket.Get(txid) != nil {
+			exist = true
+		}
+		return nil
+	})
+
+	return exist
+}
+
+func (w *WaitingDB) Close() {
 	w.lock.Lock()
 	w.db.Close()
 	w.lock.Unlock()

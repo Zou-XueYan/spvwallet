@@ -84,7 +84,7 @@ START:
 			}
 
 			num := int64(newTop - top)
-			if num == 0 {
+			if num <= 0 {
 				continue
 			}
 

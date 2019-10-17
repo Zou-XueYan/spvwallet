@@ -24,7 +24,7 @@ type Voter struct {
 	acct          *sdk.Account
 	gasPrice      uint64
 	gasLimit      uint64
-	watingDB      *WatingDB
+	WaitingDB      *WaitingDB
 	blksToWait    uint64
 	quit          chan struct{}
 }
@@ -43,7 +43,7 @@ func NewVoter(allia *sdk.MultiChainSdk, voting chan *btc.BtcProof, wallet *spvwa
 		acct:          acct,
 		gasLimit:      gasLimit,
 		gasPrice:      gasPrice,
-		watingDB:      wdb,
+		WaitingDB:      wdb,
 		blksToWait:    blksToWait,
 		quit:          make(chan struct{}),
 	}, nil
@@ -56,16 +56,18 @@ func (v *Voter) Vote() {
 		select {
 		case item := <-v.voting:
 			mtx, err := v.verify(item)
-			switch val := err.(type) {
+			switch err.(type) {
 			case LessConfirmationError:
 				go func(txid chainhash.Hash, proof *btc.BtcProof) {
-					err = v.watingDB.Put(txid[:], item)
+					if v.WaitingDB.CheckIfWaiting(txid[:]) {
+						log.Infof("[Voter] %s already in waiting", txid.String())
+						return
+					}
+					err = v.WaitingDB.Put(txid[:], item)
 					if err != nil {
 						log.Errorf("[Voter] failed to write %s into db: %v", mtx.TxHash().String(), err)
-					} else if err = v.watingDB.MarkVotedTx(txid[:]); err == nil {
-						log.Infof("[Voter] write %s into db and marked: %s", txid.String(), val.Error())
 					} else {
-						log.Errorf("[Voter] failed to mark %s: %v", txid.String(), err)
+						log.Infof("[Voter] write %s into waiting-db", txid.String())
 					}
 				}(mtx.TxHash(), item)
 				continue
@@ -87,7 +89,7 @@ func (v *Voter) Vote() {
 				continue
 			}
 
-			err = v.watingDB.MarkVotedTx(txid[:])
+			err = v.WaitingDB.MarkVotedTx(txid[:])
 			if err != nil {
 				log.Errorf("[Voter] failed to mark tx %s: %v", err)
 				continue
@@ -117,7 +119,7 @@ func (v *Voter) WaitingRetry() {
 		select {
 		case newh := <-v.wallet.Blockchain.HeaderUpdate:
 			log.Debugf("retry loop once")
-			arr, keys, err := v.watingDB.GetUnderHeightAndDelte(newh - uint32(v.blksToWait) + 1)
+			arr, keys, err := v.WaitingDB.GetUnderHeightAndDelete(newh - uint32(v.blksToWait) + 1)
 			if err != nil {
 				log.Errorf("[WaitingRetry] failed to get btcproof under height %d from db: %v", newh, err)
 				continue
@@ -143,8 +145,8 @@ func (v *Voter) verify(item *btc.BtcProof) (*wire.MsgTx, error) {
 		return nil, fmt.Errorf("verify, failed to decode transaction: %v", err)
 	}
 	txid := mtx.TxHash()
-	if v.watingDB.CheckIfVoted(txid[:]) {
-		return mtx, fmt.Errorf("verify, %s already voted or in waiting", txid.String())
+	if v.WaitingDB.CheckIfVoted(txid[:]) {
+		return mtx, fmt.Errorf("verify, %s already voted", txid.String())
 	}
 
 	bb, err := v.wallet.Blockchain.BestBlock()
@@ -197,7 +199,8 @@ func (v *Voter) verify(item *btc.BtcProof) (*wire.MsgTx, error) {
 		return mtx, fmt.Errorf("verify, failed to get header from spv client: %v", err)
 	}
 	if !bytes.Equal(merkleRootCalc[:], sh.Header.MerkleRoot[:]) {
-		return mtx, fmt.Errorf("verify, merkle root not equal")
+		return mtx, fmt.Errorf("verify, merkle root not equal, merkle root should be %s not %s, block hash in proof is %s",
+			sh.Header.MerkleRoot.String(), merkleRootCalc.String(), mb.Header.BlockHash().String())
 	}
 
 	return mtx, nil
@@ -246,8 +249,8 @@ func (v *Voter) checkTxOuts(tx *wire.MsgTx) error {
 func (v *Voter) Restart(wallet *spvwallet.SPVWallet) {
 	v.quit = make(chan struct{})
 	v.wallet = wallet
-	//fp := v.watingDB.filePath
-	//v.watingDB, err = NewWaitingDB(fp)
+	//fp := v.WaitingDB.filePath
+	//v.WaitingDB, err = NewWaitingDB(fp)
 	//if err != nil {
 	//	return err
 	//}
@@ -258,5 +261,5 @@ func (v *Voter) Restart(wallet *spvwallet.SPVWallet) {
 
 func (v *Voter) Stop() {
 	close(v.quit)
-	//v.watingDB.Close()
+	//v.WaitingDB.Close()
 }

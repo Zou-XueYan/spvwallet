@@ -139,7 +139,7 @@ func (b *Blockchain) CommitHeader(header wire.BlockHeader) (bool, *StoredHeader,
 		return newTip, commonAncestor, 0, err
 	}
 
-	if b.IsOpen && newTip && newHeight%10 == 0 {
+	if b.IsOpen && newTip {
 		b.HeaderUpdate <- newHeight
 	}
 	return newTip, commonAncestor, newHeight, nil

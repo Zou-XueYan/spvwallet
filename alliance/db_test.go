@@ -41,7 +41,7 @@ func TestNewWaitingDB(t *testing.T) {
 	}
 }
 
-func TestWatingDB_Put(t *testing.T) {
+func TestWaitingDB_Put(t *testing.T) {
 	db, err := NewWaitingDB("")
 	if err != nil {
 		t.Fatalf("Failed to new a db: %v", err)
@@ -68,7 +68,7 @@ func TestWatingDB_Put(t *testing.T) {
 
 }
 
-func TestWatingDB_GetUnderHeightAndDelte(t *testing.T) {
+func TestWaitingDB_GetUnderHeightAndDelete(t *testing.T) {
 	db, err := NewWaitingDB("")
 	if err != nil {
 		t.Fatalf("Failed to new a db: %v", err)
@@ -87,7 +87,7 @@ func TestWatingDB_GetUnderHeightAndDelte(t *testing.T) {
 		t.Fatalf("Failed to put: %v", err)
 	}
 
-	arr, _, err := db.GetUnderHeightAndDelte(Height)
+	arr, _, err := db.GetUnderHeightAndDelete(Height)
 	if err != nil {
 		t.Fatalf("Failed to get: %v", err)
 	}
@@ -99,7 +99,7 @@ func TestWatingDB_GetUnderHeightAndDelte(t *testing.T) {
 	}
 }
 
-func TestWatingDB_MarkVotedTx(t *testing.T) {
+func TestWaitingDB_MarkVotedTx(t *testing.T) {
 	db, err := NewWaitingDB("")
 	if err != nil {
 		t.Fatalf("Failed to new a db: %v", err)
