@@ -1,13 +1,13 @@
 package alliance
 
 import (
-	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/btcsuite/btcd/wire"
 	sdk "github.com/ontio/multi-chain-go-sdk"
 	"github.com/ontio/multi-chain/common"
+	"github.com/ontio/multi-chain/native/service/cross_chain_manager/btc"
 	"io/ioutil"
 	"os"
 )
@@ -34,22 +34,21 @@ type ToSignItem struct {
 // func about OP_RETURN
 func ifCanResolve(paramOutput *wire.TxOut, value int64) error {
 	script := paramOutput.PkScript
-	if int(script[1]) != OP_RETURN_DATA_LEN {
-		return errors.New("length of script is wrong")
-	}
+	//if int(script[1]) != OP_RETURN_DATA_LEN {
+	//	return errors.New("length of script is wrong")
+	//}
 	if script[2] != OP_RETURN_SCRIPT_FLAG {
 		return errors.New("wrong flag")
 	}
-	_ = binary.BigEndian.Uint64(script[3:11])
-	fee := int64(binary.BigEndian.Uint64(script[11:19]))
+	args := btc.Args{}
+	err := args.Deserialization(common.NewZeroCopySource(script[3:]))
+	if err != nil {
+		return err
+	}
 	//if fee < MIN_FEE {
 	//	return fmt.Errorf("transaction fee %d is less than minimum transaction fee %d", fee, MIN_FEE)
 	//}
-	_, err := common.AddressParseFromBytes(script[19:])
-	if err != nil {
-		return fmt.Errorf("failed to parse address from bytes: %v", err)
-	}
-	if value < fee && fee >= 0 {
+	if value < args.Fee && args.Fee >= 0 {
 		return errors.New("the transfer amount cannot be less than the transaction fee")
 	}
 	return nil

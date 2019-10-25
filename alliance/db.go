@@ -182,6 +182,25 @@ func (w *WaitingDB) CheckIfWaiting(txid []byte) bool {
 	return exist
 }
 
+func (w *WaitingDB) DelIfExist(txid []byte) bool {
+	w.lock.Lock()
+	defer w.lock.Unlock()
+
+	exist := false
+	_ = w.db.Update(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket(BKTWaiting)
+		if bucket.Get(txid) != nil {
+			err := bucket.Delete(txid)
+			if err == nil {
+				exist = true
+			}
+		}
+		return nil
+	})
+
+	return exist
+}
+
 func (w *WaitingDB) Close() {
 	w.lock.Lock()
 	w.db.Close()

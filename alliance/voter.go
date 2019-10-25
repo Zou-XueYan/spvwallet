@@ -56,6 +56,7 @@ func (v *Voter) Vote() {
 		select {
 		case item := <-v.voting:
 			mtx, err := v.verify(item)
+			btcTxHash := mtx.TxHash()
 			switch err.(type) {
 			case LessConfirmationError:
 				go func(txid chainhash.Hash, proof *btc.BtcProof) {
@@ -69,7 +70,7 @@ func (v *Voter) Vote() {
 					} else {
 						log.Infof("[Voter] write %s into waiting-db", txid.String())
 					}
-				}(mtx.TxHash(), item)
+				}(btcTxHash, item)
 				continue
 			case error:
 				if mtx != nil {
@@ -79,32 +80,24 @@ func (v *Voter) Vote() {
 				}
 				continue
 			}
+			log.Infof("[Voter] transaction %s passed the verify, next vote for it", btcTxHash.String())
 
-			txid := mtx.TxHash()
-			log.Infof("[Voter] transaction %s passed the verify, next vote for it", txid.String())
-
-			txHash, err := v.allia.Native.Ccm.Vote(v.acct.Address.ToBase58(), txid.String(), v.acct)
+			txHash, err := v.allia.Native.Ccm.Vote(BTC_CHAINID, v.acct.Address.ToBase58(), btcTxHash.String(), v.acct)
 			if err != nil {
 				log.Errorf("[Voter] invokeNativeContract error: %v", err)
 				continue
 			}
 
-			err = v.WaitingDB.MarkVotedTx(txid[:])
+			err = v.WaitingDB.MarkVotedTx(btcTxHash[:])
 			if err != nil {
 				log.Errorf("[Voter] failed to mark tx %s: %v", err)
 				continue
 			}
-			log.Infof("[Voter] vote yes for %s and marked. Sending transaction %s to alliance chain", txid.String(),
+			log.Infof("[Voter] vote yes for %s and marked. Sending transaction %s to alliance chain", btcTxHash.String(),
 				txHash.ToHexString())
-			//go func() { // TODO
-			//	event, err := v.allia.GetSmartContractEvent(txHash.ToHexString())
-			//
-			//	if event.State == 0 || err != nil {
-			//		log.Errorf("[Voter] voting for %s failed.(alliance transaction %s)", txid.String(), txHash.ToHexString())
-			//	} else {
-			//		log.Infof("[Voter] successfully")
-			//	}
-			//}()
+			if v.WaitingDB.DelIfExist(btcTxHash[:]) {
+				log.Infof("[Voter] then delete tx %s from waiting-db", btcTxHash.String())
+			}
 		case <-v.quit:
 			log.Info("stopping voting")
 			return

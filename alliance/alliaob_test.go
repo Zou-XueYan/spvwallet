@@ -106,3 +106,12 @@ func TestObserver_checkEvents(t *testing.T) {
 	}
 	fmt.Println(txItem.Mtx.TxHash().String())
 }
+
+func TestGetAccountByPassword(t *testing.T) {
+	allia := sdk.NewMultiChainSdk()
+	acct, err := GetAccountByPassword(allia, "./wallet.dat", "1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Println(acct.Address.ToBase58())
+}
