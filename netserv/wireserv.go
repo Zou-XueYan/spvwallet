@@ -136,35 +136,25 @@ out:
 	for {
 		select {
 		case m := <-ws.msgChan:
-			log.Tracef("****************GetMsg %d peers***********", len(ws.peerStates))
 			switch msg := m.(type) {
 			case newPeerMsg:
-				log.Tracef("****************newPeerMsg:%s***********", msg.peer.String())
 				ws.handleNewPeerMsg(msg.peer)
 			case donePeerMsg:
-				log.Tracef("****************donePeerMsg:%s***********", msg.peer.String())
 				ws.handleDonePeerMsg(msg.peer)
 			case headersMsg:
-				log.Tracef("****************headersMsg:%d***********", len(msg.headers.Headers))
 				ws.handleHeadersMsg(&msg)
 			case merkleBlockMsg:
-				log.Tracef("****************merkleBlockMsg:%s: %s***********",
-					msg.merkleBlock.Header.BlockHash().String(), msg.peer.String())
 				ws.handleMerkleBlockMsg(&msg)
 			case invMsg:
-				log.Tracef("****************invMsg:%d: %s***********", len(msg.inv.InvList), msg.peer.String())
 				ws.handleInvMsg(&msg)
 			//case txMsg:
-			//	log.Tracef("****************txMsg %s: %s***********", msg.tx.TxHash().String(), msg.peer.String())
 			//	ws.handleTxMsg(&msg)
 			//case updateFiltersMsg:
-			//	log.Tracef("****************updateFiltersMsg:***********")
 			//	ws.handleUpdateFiltersMsg()
 			default:
 				log.Warnf("Unknown message type sent to WireService message chan: %T", msg)
 			}
 		case <-ws.quit:
-			log.Tracef("****************quit msg***********")
 			break out
 		}
 	}
@@ -527,7 +517,6 @@ func (ws *WireService) handleMerkleBlockMsg(bmsg *merkleBlockMsg) {
 		peer.QueueMessage(gdmsg2, nil)
 		log.Debugf("Requesting block %s, len request queue: %d", iv.Hash.String(), len(state.requestQueue))
 	}
-	log.Tracef("*******************%d here********************", newHeight)
 }
 
 // handleInvMsg handles inv messages from all peers.
@@ -563,28 +552,8 @@ func (ws *WireService) handleInvMsg(imsg *invMsg) {
 	// Ignore invs from peers that aren't the sync if we are not current.
 	// Helps prevent fetching a mass of orphans.
 	if peer != ws.syncPeer && !ws.Current() {
-		if ws.syncPeer == nil {
-			log.Tracef("*************not sync syncPeer is nil, current: %v*************", ws.Current())
-		} else {
-			log.Tracef("*************not sync syncPeer: %v, current: %v*************", ws.syncPeer.String(), ws.Current())
-		}
 		return
 	}
-
-	content := "invlist:"
-	for _, iv := range invVects {
-		switch iv.Type {
-		case wire.InvTypeFilteredBlock:
-			fallthrough
-		case wire.InvTypeBlock:
-			content += "\n\tblock:" + iv.Hash.String()
-		case wire.InvTypeTx:
-			content += "\n\ttx:" + iv.Hash.String()
-		default:
-			continue
-		}
-	}
-	log.Tracef("%s\n", content)
 
 	// If our chain is current and a peer announces a block we already
 	// know of, then update their current block height.
