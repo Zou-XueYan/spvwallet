@@ -2,9 +2,9 @@ package spvwallet
 
 import (
 	"errors"
-	"github.com/Zou-XueYan/spvwallet/chain"
-	"github.com/Zou-XueYan/spvwallet/log"
-	"github.com/Zou-XueYan/spvwallet/netserv"
+	"github.com/ontio/spvwallet/chain"
+	"github.com/ontio/spvwallet/log"
+	"github.com/ontio/spvwallet/netserv"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/peer"

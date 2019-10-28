@@ -3,7 +3,7 @@ package alliance
 import (
 	"bytes"
 	"encoding/hex"
-	"github.com/Zou-XueYan/spvwallet/log"
+	"github.com/ontio/spvwallet/log"
 	"github.com/btcsuite/btcd/wire"
 	sdk "github.com/ontio/multi-chain-go-sdk"
 	"github.com/ontio/multi-chain-go-sdk/common"

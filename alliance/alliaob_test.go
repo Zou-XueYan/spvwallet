@@ -3,7 +3,7 @@ package alliance
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/Zou-XueYan/spvwallet/log"
+	"github.com/ontio/spvwallet/log"
 	sdk "github.com/ontio/multi-chain-go-sdk"
 	"github.com/ontio/multi-chain-go-sdk/common"
 	mcommon "github.com/ontio/multi-chain/common"

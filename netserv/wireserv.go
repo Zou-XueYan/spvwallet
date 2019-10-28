@@ -1,8 +1,8 @@
 package netserv
 
 import (
-	"github.com/Zou-XueYan/spvwallet/chain"
-	"github.com/Zou-XueYan/spvwallet/log"
+	"github.com/ontio/spvwallet/chain"
+	"github.com/ontio/spvwallet/log"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	peerpkg "github.com/btcsuite/btcd/peer"

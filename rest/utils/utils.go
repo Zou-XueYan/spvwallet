@@ -3,7 +3,7 @@ package utils
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/Zou-XueYan/spvwallet/rest/http/common"
+	"github.com/ontio/spvwallet/rest/http/common"
 )
 
 func ParseParams(req interface{}, params map[string]interface{}) error {

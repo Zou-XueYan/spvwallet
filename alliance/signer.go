@@ -2,7 +2,7 @@ package alliance
 
 import (
 	"fmt"
-	"github.com/Zou-XueYan/spvwallet/log"
+	"github.com/ontio/spvwallet/log"
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/txscript"

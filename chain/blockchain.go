@@ -5,7 +5,7 @@ package chain
 
 import (
 	"errors"
-	"github.com/Zou-XueYan/spvwallet/log"
+	"github.com/ontio/spvwallet/log"
 	"github.com/btcsuite/btcd/blockchain"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
