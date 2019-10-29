@@ -16,7 +16,7 @@ var (
 )
 
 type WaitingDB struct {
-	lock     *sync.Mutex
+	lock     *sync.RWMutex
 	db       *bolt.DB
 	filePath string
 }
@@ -31,7 +31,7 @@ func NewWaitingDB(filePath string) (*WaitingDB, error) {
 		return nil, err
 	}
 	w.db = db
-	w.lock = new(sync.Mutex)
+	w.lock = new(sync.RWMutex)
 	w.filePath = filePath
 
 	if err = db.Update(func(btx *bolt.Tx) error {
@@ -74,8 +74,8 @@ func (w *WaitingDB) Put(txid []byte, item *btc.BtcProof) error {
 }
 
 func (w *WaitingDB) Get(txid []byte) (p *btc.BtcProof, err error) {
-	w.lock.Lock()
-	defer w.lock.Unlock()
+	w.lock.RLock()
+	defer w.lock.RUnlock()
 
 	p = &btc.BtcProof{}
 	err = w.db.View(func(tx *bolt.Tx) error {
@@ -151,8 +151,8 @@ func (w *WaitingDB) MarkVotedTx(txid []byte) error {
 }
 
 func (w *WaitingDB) CheckIfVoted(txid []byte) bool {
-	w.lock.Lock()
-	defer w.lock.Unlock()
+	w.lock.RLock()
+	defer w.lock.RUnlock()
 
 	exist := false
 	_ = w.db.View(func(tx *bolt.Tx) error {
@@ -167,8 +167,8 @@ func (w *WaitingDB) CheckIfVoted(txid []byte) bool {
 }
 
 func (w *WaitingDB) CheckIfWaiting(txid []byte) bool {
-	w.lock.Lock()
-	defer w.lock.Unlock()
+	w.lock.RLock()
+	defer w.lock.RUnlock()
 
 	exist := false
 	_ = w.db.View(func(tx *bolt.Tx) error {

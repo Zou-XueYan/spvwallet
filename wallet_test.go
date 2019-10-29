@@ -1,10 +1,10 @@
 package spvwallet
 
 import (
-	"github.com/ontio/spvwallet/db"
-	"github.com/ontio/spvwallet/log"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcutil"
+	"github.com/ontio/spvwallet/db"
+	"github.com/ontio/spvwallet/log"
 	"os"
 	"testing"
 	"time"

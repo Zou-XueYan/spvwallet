@@ -2,7 +2,6 @@ package alliance
 
 import (
 	"fmt"
-	"github.com/ontio/spvwallet/log"
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/txscript"
@@ -10,6 +9,7 @@ import (
 	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/btcutil/base58"
 	sdk "github.com/ontio/multi-chain-go-sdk"
+	"github.com/ontio/spvwallet/log"
 )
 
 type Signer struct {

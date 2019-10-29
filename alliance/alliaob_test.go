@@ -3,11 +3,11 @@ package alliance
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/ontio/spvwallet/log"
 	sdk "github.com/ontio/multi-chain-go-sdk"
 	"github.com/ontio/multi-chain-go-sdk/common"
 	mcommon "github.com/ontio/multi-chain/common"
 	"github.com/ontio/multi-chain/native/service/cross_chain_manager/btc"
+	"github.com/ontio/spvwallet/log"
 	"testing"
 	"time"
 )

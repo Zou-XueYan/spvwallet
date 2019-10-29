@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/ontio/spvwallet"
-	"github.com/ontio/spvwallet/log"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
@@ -14,6 +12,8 @@ import (
 	"github.com/gcash/bchutil/merkleblock"
 	sdk "github.com/ontio/multi-chain-go-sdk"
 	"github.com/ontio/multi-chain/native/service/cross_chain_manager/btc"
+	"github.com/ontio/spvwallet"
+	"github.com/ontio/spvwallet/log"
 )
 
 type Voter struct {
@@ -24,7 +24,7 @@ type Voter struct {
 	acct          *sdk.Account
 	gasPrice      uint64
 	gasLimit      uint64
-	WaitingDB      *WaitingDB
+	WaitingDB     *WaitingDB
 	blksToWait    uint64
 	quit          chan struct{}
 }
@@ -43,7 +43,7 @@ func NewVoter(allia *sdk.MultiChainSdk, voting chan *btc.BtcProof, wallet *spvwa
 		acct:          acct,
 		gasLimit:      gasLimit,
 		gasPrice:      gasPrice,
-		WaitingDB:      wdb,
+		WaitingDB:     wdb,
 		blksToWait:    blksToWait,
 		quit:          make(chan struct{}),
 	}, nil

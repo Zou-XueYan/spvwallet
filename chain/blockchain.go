@@ -5,11 +5,11 @@ package chain
 
 import (
 	"errors"
-	"github.com/ontio/spvwallet/log"
 	"github.com/btcsuite/btcd/blockchain"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
+	"github.com/ontio/spvwallet/log"
 	"math/big"
 	"sort"
 	"sync"

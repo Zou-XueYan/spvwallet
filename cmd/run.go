@@ -1,17 +1,17 @@
-package main
+package cmd
 
 import (
 	"encoding/hex"
 	"fmt"
+	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/google/gops/agent"
+	sdk "github.com/ontio/multi-chain-go-sdk"
+	"github.com/ontio/multi-chain/native/service/cross_chain_manager/btc"
 	"github.com/ontio/spvwallet"
 	"github.com/ontio/spvwallet/alliance"
 	"github.com/ontio/spvwallet/log"
 	"github.com/ontio/spvwallet/rest/http/restful"
 	"github.com/ontio/spvwallet/rest/service"
-	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/google/gops/agent"
-	sdk "github.com/ontio/multi-chain-go-sdk"
-	"github.com/ontio/multi-chain/native/service/cross_chain_manager/btc"
 	"github.com/urfave/cli"
 	"net"
 	"os"

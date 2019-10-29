@@ -2,9 +2,6 @@ package spvwallet
 
 import (
 	"errors"
-	"github.com/ontio/spvwallet/chain"
-	"github.com/ontio/spvwallet/log"
-	"github.com/ontio/spvwallet/netserv"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/peer"
@@ -13,6 +10,9 @@ import (
 	btc "github.com/btcsuite/btcutil"
 	hd "github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/btcsuite/btcwallet/wallet/txrules"
+	"github.com/ontio/spvwallet/chain"
+	"github.com/ontio/spvwallet/log"
+	"github.com/ontio/spvwallet/netserv"
 	"time"
 )
 

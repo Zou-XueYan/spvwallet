@@ -71,7 +71,7 @@ func (sh *StoredHeader) GetTotalWork() *big.Int {
 
 // HeaderDB implements Headers using bolt DB
 type HeaderDB struct {
-	lock      *sync.Mutex
+	lock      *sync.RWMutex
 	db        *bolt.DB
 	filePath  string
 	bestCache *StoredHeader
@@ -95,7 +95,7 @@ func NewHeaderDB(filePath string) (*HeaderDB, error) {
 		return nil, err
 	}
 	h.db = db
-	h.lock = new(sync.Mutex)
+	h.lock = new(sync.RWMutex)
 	h.filePath = filePath
 	h.cache = &HeaderCache{ordered_map.NewOrderedMap(), sync.RWMutex{}, CACHE_SIZE}
 
@@ -263,8 +263,8 @@ func (h *HeaderDB) GetPreviousHeader(header wire.BlockHeader) (sh StoredHeader, 
 }
 
 func (h *HeaderDB) GetHeader(hash chainhash.Hash) (sh StoredHeader, err error) {
-	h.lock.Lock()
-	defer h.lock.Unlock()
+	h.lock.RLock()
+	defer h.lock.RUnlock()
 
 	cachedHeader, cerr := h.cache.Get(hash)
 	if cerr == nil {
@@ -333,6 +333,15 @@ func (h *HeaderDB) GetHeader(hash chainhash.Hash) (sh StoredHeader, err error) {
 
 // add by zou
 func (h *HeaderDB) GetHeaderByHeight(height uint32) (sh StoredHeader, err error) {
+	hash, err := h.cache.GetHashByHeight(height)
+	cachedHeader, cerr := h.cache.Get(hash)
+	if err == nil && cerr == nil {
+		return cachedHeader, nil
+	}
+
+	h.lock.RLock()
+	defer h.lock.RUnlock()
+
 	best, err := h.GetBestHeader()
 	if err != nil {
 		return StoredHeader{}, err
@@ -340,14 +349,11 @@ func (h *HeaderDB) GetHeaderByHeight(height uint32) (sh StoredHeader, err error)
 		return StoredHeader{}, fmt.Errorf("best block height %d is lower than %d", best.Height, height)
 	}
 
-	h.lock.Lock()
-	defer h.lock.Unlock()
-
 	ptr := best
-	for ptr.Height > height {
-		if err = h.db.View(func(btx *bolt.Tx) error {
-			hdrs := btx.Bucket(BKTHeaders)
-			b := hdrs.Get(ptr.Header.PrevBlock.CloneBytes())
+	if err = h.db.View(func(btx *bolt.Tx) error {
+		hdrs := btx.Bucket(BKTHeaders)
+		for ptr.Height > height {
+			b := hdrs.Get(ptr.Header.PrevBlock[:])
 			if b == nil {
 				return errors.New("Header does not exist in database")
 			}
@@ -355,18 +361,18 @@ func (h *HeaderDB) GetHeaderByHeight(height uint32) (sh StoredHeader, err error)
 			if err != nil {
 				return err
 			}
-			return nil
-		}); err != nil {
-			return StoredHeader{}, fmt.Errorf("maybe %d not in db: %v", height, err)
 		}
+		return nil
+	}); err != nil {
+		return StoredHeader{}, fmt.Errorf("maybe %d not in db: %v", height, err)
 	}
 
 	return ptr, nil
 }
 
 func (h *HeaderDB) GetBestHeader() (sh StoredHeader, err error) {
-	h.lock.Lock()
-	defer h.lock.Unlock()
+	h.lock.RLock()
+	defer h.lock.RUnlock()
 	if h.bestCache != nil {
 		best := h.bestCache
 		return *best, nil
@@ -390,8 +396,8 @@ func (h *HeaderDB) GetBestHeader() (sh StoredHeader, err error) {
 }
 
 func (h *HeaderDB) Height() (uint32, error) {
-	h.lock.Lock()
-	defer h.lock.Unlock()
+	h.lock.RLock()
+	defer h.lock.RUnlock()
 	if h.bestCache != nil {
 		return h.bestCache.Height, nil
 	}
@@ -412,8 +418,8 @@ func (h *HeaderDB) Height() (uint32, error) {
 }
 
 func (h *HeaderDB) Print(w io.Writer) {
-	h.lock.Lock()
-	defer h.lock.Unlock()
+	h.lock.RLock()
+	defer h.lock.RUnlock()
 	m := make(map[float64][]string)
 	h.db.View(func(tx *bolt.Tx) error {
 		// Assume bucket exists and has keys

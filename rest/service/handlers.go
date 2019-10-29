@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"github.com/btcsuite/btcd/wire"
 	"github.com/ontio/spvwallet"
 	"github.com/ontio/spvwallet/log"
 	"github.com/ontio/spvwallet/rest/http/common"
 	"github.com/ontio/spvwallet/rest/http/restful"
 	"github.com/ontio/spvwallet/rest/utils"
-	"github.com/btcsuite/btcd/wire"
 	"time"
 )
 
