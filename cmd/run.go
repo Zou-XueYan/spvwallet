@@ -26,11 +26,11 @@ import (
 func setupApp() *cli.App {
 	app := cli.NewApp()
 	app.Usage = "start spv client"
-	app.Action = Run
+	app.Action = run
 	app.Copyright = ""
 	app.Flags = []cli.Flag{
 		spvwallet.LogLevelFlag,
-		spvwallet.AlliaConfigFile,
+		spvwallet.ConfigFile,
 		spvwallet.GoMaxProcs,
 	}
 	app.Before = func(context *cli.Context) error {
@@ -52,11 +52,11 @@ func main() {
 	}
 }
 
-func Run(ctx *cli.Context) {
+func run(ctx *cli.Context) {
 	logLevel := ctx.GlobalInt(spvwallet.GetFlagName(spvwallet.LogLevelFlag))
 	log.InitLog(logLevel, log.Stdout)
 
-	conf, err := config.NewConfig(ctx.GlobalString(spvwallet.GetFlagName(spvwallet.AlliaConfigFile)))
+	conf, err := config.NewConfig(ctx.GlobalString(spvwallet.GetFlagName(spvwallet.ConfigFile)))
 	if err != nil {
 		log.Errorf("failed to new a config: %v", err)
 		os.Exit(1)

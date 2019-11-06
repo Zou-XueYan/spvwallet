@@ -25,11 +25,9 @@ type Config struct {
 	ConfigDBPath           string
 	TrustedPeer            string
 	RunRest                int
-	RestConfigPath         string
 	RunVote                int
 	RestartDuration        int
 	IsRestart              int
-	RestPath               string
 	RestPort               uint64
 }
 

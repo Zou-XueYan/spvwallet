@@ -11,7 +11,6 @@ import (
 	"github.com/btcsuite/btcd/wire"
 	"github.com/ontio/spvwallet/log"
 	"math/big"
-	"sort"
 	"sync"
 	"time"
 )
@@ -216,26 +215,6 @@ func (b *Blockchain) calcRequiredWork(header wire.BlockHeader, height int32, pre
 		return 0, err
 	}
 	return calcDiffAdjust(*epoch, prevHeader.Header, b.params), nil
-}
-
-func (b *Blockchain) CalcMedianTimePast(header wire.BlockHeader) (time.Time, error) {
-	timestamps := make([]int64, medianTimeBlocks)
-	numNodes := 0
-	iterNode := StoredHeader{Header: header}
-	var err error
-
-	for i := 0; i < medianTimeBlocks; i++ {
-		numNodes++
-		timestamps[i] = iterNode.Header.Timestamp.Unix()
-		iterNode, err = b.db.GetPreviousHeader(iterNode.Header)
-		if err != nil {
-			return time.Time{}, err
-		}
-	}
-	timestamps = timestamps[:numNodes]
-	sort.Sort(timeSorter(timestamps))
-	medianTimestamp := timestamps[numNodes/2]
-	return time.Unix(medianTimestamp, 0), nil
 }
 
 func (b *Blockchain) GetEpoch() (*wire.BlockHeader, error) {
