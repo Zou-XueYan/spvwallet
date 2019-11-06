@@ -11,5 +11,6 @@
   "WaitingDBPath": "./waiting.bin",
   "BlksToWait": 6,
   "BtcPrivk": "cTqbqa1YqCf4BaQTwYDGsPAB4VmWKUU67G5S1EtrHSWNRwY6QSag",
-  "WatchingMakeTxKey": "btcTxToRelay"
+  "WatchingMakeTxKey": "makeBtcTx",
+
 }

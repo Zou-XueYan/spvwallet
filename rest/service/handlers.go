@@ -15,13 +15,11 @@ import (
 
 type Service struct {
 	wallet *spvwallet.SPVWallet
-	cfg    *spvwallet.RestConfig
 }
 
-func NewService(wallet *spvwallet.SPVWallet, cfg *spvwallet.RestConfig) *Service {
+func NewService(wallet *spvwallet.SPVWallet) *Service {
 	return &Service{
 		wallet: wallet,
-		cfg:    cfg,
 	}
 }
 

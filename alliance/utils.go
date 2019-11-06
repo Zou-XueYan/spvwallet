@@ -68,6 +68,7 @@ type AlliaConfig struct {
 	BlksToWait             uint64
 	BtcPrivk               string
 	WatchingMakeTxKey      string
+
 }
 
 func NewAlliaConfig(file string) (*AlliaConfig, error) {

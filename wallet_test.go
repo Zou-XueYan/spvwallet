@@ -33,7 +33,7 @@ func TestSPVWallet_Restart(t *testing.T) {
 	time.Sleep(2 * time.Second)
 	wallet.wireService.syncPeer = nil
 	//wallet.Close()
-	//wallet, err = NewSPVWallet(conf)
+	//wallet, err = NewSPVWallet(config)
 	//if err != nil {
 	//	t.Fatalf("Failed to new a spvwallet: %v", err)
 	//}

@@ -1,13 +1,10 @@
 package spvwallet
 
 import (
-	"encoding/json"
-	"fmt"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/mitchellh/go-homedir"
 	"github.com/urfave/cli"
 	"golang.org/x/net/proxy"
-	"io/ioutil"
 	"net"
 	"os"
 	"path/filepath"
@@ -190,20 +187,20 @@ func getRepoPath() (string, error) {
 }
 
 //Config object used by ontology-instance
-type RestConfig struct {
-	Port uint64 `json:"port"`
-	Path string `json:"path"`
-}
-
-func NewRestConfig(fileName string) (*RestConfig, error) {
-	data, err := ioutil.ReadFile(fileName)
-	if err != nil {
-		return nil, err
-	}
-	cfg := &RestConfig{}
-	err = json.Unmarshal(data, cfg)
-	if err != nil {
-		return nil, fmt.Errorf("json.Unmarshal Config:%s error:%s", data, err)
-	}
-	return cfg, nil
-}
+//type RestConfig struct {
+//	Port uint64 `json:"port"`
+//	Path string `json:"path"`
+//}
+//
+//func NewRestConfig(fileName string) (*RestConfig, error) {
+//	data, err := ioutil.ReadFile(fileName)
+//	if err != nil {
+//		return nil, err
+//	}
+//	cfg := &RestConfig{}
+//	err = json.Unmarshal(data, cfg)
+//	if err != nil {
+//		return nil, fmt.Errorf("json.Unmarshal Config:%s error:%s", data, err)
+//	}
+//	return cfg, nil
+//}

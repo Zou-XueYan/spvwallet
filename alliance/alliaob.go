@@ -12,26 +12,26 @@ import (
 	"time"
 )
 
-type ObConfig struct {
-	FirstN            int
+type Observer struct {
+	voting chan *btc.BtcProof
+	txchan chan *ToSignItem
+	allia  *sdk.MultiChainSdk
+	FirstN            int64
 	LoopWaitTime      int64
 	WatchingKey       string
 	WatchingMakeTxKey string
 }
 
-type Observer struct {
-	voting chan *btc.BtcProof
-	txchan chan *ToSignItem
-	allia  *sdk.MultiChainSdk
-	conf   *ObConfig
-}
-
-func NewObserver(allia *sdk.MultiChainSdk, conf *ObConfig, voting chan *btc.BtcProof, txchan chan *ToSignItem) *Observer {
+func NewObserver(allia *sdk.MultiChainSdk, voting chan *btc.BtcProof, txchan chan *ToSignItem, firstN int64,
+	loopWaitTime int64, watchingKey string, watchingMakeTxKey string) *Observer {
 	return &Observer{
 		voting: voting,
-		conf:   conf,
 		allia:  allia,
 		txchan: txchan,
+		WatchingMakeTxKey: watchingMakeTxKey,
+		WatchingKey: watchingKey,
+		LoopWaitTime: loopWaitTime,
+		FirstN: firstN,
 	}
 }
 
@@ -45,7 +45,7 @@ START:
 		goto START
 	}
 
-	num := ob.conf.FirstN
+	num := ob.FirstN
 	h := uint32(top)
 	count := 0
 	countTx := 0
@@ -63,11 +63,11 @@ START:
 		num--
 		h--
 	}
-	log.Infof("[Observer] btc proof: total %d transactions captured from %d blocks", count, ob.conf.FirstN)
-	log.Infof("[Observer] btc tx: total %d transactions captured from %d blocks", countTx, ob.conf.FirstN)
+	log.Infof("[Observer] btc proof: total %d transactions captured from %d blocks", count, ob.FirstN)
+	log.Infof("[Observer] btc tx: total %d transactions captured from %d blocks", countTx, ob.FirstN)
 
-	log.Infof("[Observer] next, check once %d seconds", ob.conf.LoopWaitTime)
-	tick := time.NewTicker(time.Second * time.Duration(ob.conf.LoopWaitTime))
+	log.Infof("[Observer] next, check once %d seconds", ob.LoopWaitTime)
+	tick := time.NewTicker(time.Second * time.Duration(ob.LoopWaitTime))
 	defer tick.Stop()
 
 	for {
@@ -127,7 +127,7 @@ func (ob *Observer) checkEvents(events []*common.SmartContactEvent, h uint32) (i
 			}
 
 			name, ok := states[0].(string)
-			if ok && name == ob.conf.WatchingKey {
+			if ok && name == ob.WatchingKey {
 				txid := states[1].(string)
 				btcProofBytes, err := hex.DecodeString(states[2].(string))
 				if err != nil {
@@ -145,7 +145,7 @@ func (ob *Observer) checkEvents(events []*common.SmartContactEvent, h uint32) (i
 				ob.voting <- &btcProof
 				count++
 				log.Infof("[Observer] captured %s proof when height is %d", txid, h)
-			} else if ok && name == ob.conf.WatchingMakeTxKey {
+			} else if ok && name == ob.WatchingMakeTxKey {
 				txb, err := hex.DecodeString(states[1].(string))
 				if err != nil {
 					log.Errorf("[Observer] failed to decode hex-string of tx: %v", err)

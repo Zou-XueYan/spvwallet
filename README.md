@@ -9,6 +9,6 @@ This is a light bitcoin client which only synchronize and store block headers. Y
 Build the client and use <u>./run help</u> to check the configuration.
 
 ```go
-go build ./cmd/lightcli/run.go
+go build ./cmd/run.go
 ```
 
