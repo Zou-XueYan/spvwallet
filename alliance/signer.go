@@ -12,6 +12,7 @@ import (
 	"github.com/ontio/multi-chain-go-sdk/client"
 	"github.com/ontio/spvclient/config"
 	"github.com/ontio/spvclient/log"
+	"io/ioutil"
 	"time"
 )
 
@@ -23,9 +24,13 @@ type Signer struct {
 	acct     *sdk.Account
 }
 
-func NewSigner(privk string, txchan chan *ToSignItem, acct *sdk.Account, allia *sdk.MultiChainSdk,
+func NewSigner(privkFile string, txchan chan *ToSignItem, acct *sdk.Account, allia *sdk.MultiChainSdk,
 	params *chaincfg.Params) (*Signer, error) {
-	privKey, pubk := btcec.PrivKeyFromBytes(btcec.S256(), base58.Decode(privk))
+	data, err := ioutil.ReadFile(privkFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read btc privk: %v", err)
+	}
+	privKey, pubk := btcec.PrivKeyFromBytes(btcec.S256(), base58.Decode(string(data)))
 	addrPubK, err := btcutil.NewAddressPubKey(pubk.SerializeCompressed(), params)
 	if err != nil {
 		return nil, err

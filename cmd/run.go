@@ -166,7 +166,7 @@ func startAllianceService(conf *config.Config, wallet *spvclient.SPVWallet, voti
 	go v.Vote()
 	go v.WaitingRetry()
 
-	signer, err := alliance.NewSigner(conf.BtcPrivk, txchan, acct, allia, params)
+	signer, err := alliance.NewSigner(conf.BtcPrivkFile, txchan, acct, allia, params)
 	if err != nil {
 		return ob, v, fmt.Errorf("failed to new a signer: %v", err)
 	}

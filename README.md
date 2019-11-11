@@ -1,12 +1,10 @@
-# Lightweight Spv Client for Bitcoin
+# 比特币轻客户端
 
-The original code comes from [OpenBazaar/spvwallet](https://github.com/OpenBazaar/spvwallet), thanks a lot.
+​	SpvClient是跨链生态中每个联盟链节点对比特币跨链交易进行验证、投票和签名的工具，包含了比特币轻客户端的功能，维护了区块头数据。
 
-This is a light bitcoin client which only synchronize and store block headers. You can get headers in bytes from this client and decode by btcd.
+## 使用
 
-## Usage
-
-Build the client and use <u>./run help</u> to check the configuration.
+在项目根目录下运行以下命令即可
 
 ```go
 go build ./cmd/run.go

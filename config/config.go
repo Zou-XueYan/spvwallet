@@ -19,7 +19,7 @@ type Config struct {
 	Redeem                 string
 	WaitingDBPath          string
 	BlksToWait             uint64
-	BtcPrivk               string
+	BtcPrivkFile           string
 	WatchingMakeTxKey      string
 	ConfigBitcoinNet       string
 	ConfigDBPath           string
