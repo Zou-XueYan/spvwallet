@@ -61,6 +61,9 @@ func run(ctx *cli.Context) {
 		log.Errorf("failed to new a config: %v", err)
 		os.Exit(1)
 	}
+	if conf.SleepTime > 0 {
+		config.SleepTime = time.Duration(conf.SleepTime)
+	}
 
 	var netType *chaincfg.Params
 	switch conf.ConfigBitcoinNet {
@@ -146,15 +149,15 @@ func startAllianceService(conf *config.Config, wallet *spvwallet.SPVWallet, voti
 		return nil, nil, fmt.Errorf("GetAccountByPassword failed: %v", err)
 	}
 
-	ob := alliance.NewObserver(allia, voting, txchan, conf.AlliaObFirstN, conf.AlliaObLoopWaitTime, conf.WatchingKey,
-		conf.WatchingMakeTxKey)
+	ob := alliance.NewObserver(allia, voting, txchan, conf.AlliaObLoopWaitTime, conf.WatchingKey, conf.WatchingMakeTxKey,
+		conf.AlliaNet)
 	go ob.Listen()
 
 	redeem, err := hex.DecodeString(conf.Redeem)
 	if err != nil {
 		return ob, nil, fmt.Errorf("failed to decode redeem %s: %v", conf.Redeem, err)
 	}
-	v, err := alliance.NewVoter(allia, voting, wallet, redeem, acct, conf.GasPrice, conf.GasLimit, conf.WaitingDBPath,
+	v, err := alliance.NewVoter(allia, voting, wallet, redeem, acct, conf.WaitingDBPath,
 		conf.BlksToWait)
 	if err != nil {
 		return ob, v, fmt.Errorf("failed to new a voter: %v", err)
@@ -163,7 +166,7 @@ func startAllianceService(conf *config.Config, wallet *spvwallet.SPVWallet, voti
 	go v.Vote()
 	go v.WaitingRetry()
 
-	signer, err := alliance.NewSigner(conf.BtcPrivk, txchan, acct, conf.GasPrice, conf.GasLimit, allia, params)
+	signer, err := alliance.NewSigner(conf.BtcPrivk, txchan, acct, allia, params)
 	if err != nil {
 		return ob, v, fmt.Errorf("failed to new a signer: %v", err)
 	}
@@ -259,5 +262,3 @@ func waitToExit() {
 	}()
 	<-exit
 }
-
-

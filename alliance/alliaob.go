@@ -5,120 +5,92 @@ import (
 	"encoding/hex"
 	"github.com/btcsuite/btcd/wire"
 	sdk "github.com/ontio/multi-chain-go-sdk"
+	"github.com/ontio/multi-chain-go-sdk/client"
 	"github.com/ontio/multi-chain-go-sdk/common"
 	mc "github.com/ontio/multi-chain/common"
 	"github.com/ontio/multi-chain/native/service/cross_chain_manager/btc"
+	"github.com/ontio/spvwallet/config"
 	"github.com/ontio/spvwallet/log"
 	"time"
 )
 
 type Observer struct {
-	voting chan *btc.BtcProof
-	txchan chan *ToSignItem
-	allia  *sdk.MultiChainSdk
-	FirstN            int64
-	LoopWaitTime      int64
-	WatchingKey       string
-	WatchingMakeTxKey string
+	voting            chan *btc.BtcProof
+	txchan            chan *ToSignItem
+	allia             *sdk.MultiChainSdk
+	loopWaitTime      int64
+	watchingKey       string
+	watchingMakeTxKey string
+	netType           string
 }
 
-func NewObserver(allia *sdk.MultiChainSdk, voting chan *btc.BtcProof, txchan chan *ToSignItem, firstN int64,
-	loopWaitTime int64, watchingKey string, watchingMakeTxKey string) *Observer {
+func NewObserver(allia *sdk.MultiChainSdk, voting chan *btc.BtcProof, txchan chan *ToSignItem, loopWaitTime int64,
+	watchingKey, watchingMakeTxKey, netType string) *Observer {
 	return &Observer{
-		voting: voting,
-		allia:  allia,
-		txchan: txchan,
-		WatchingMakeTxKey: watchingMakeTxKey,
-		WatchingKey: watchingKey,
-		LoopWaitTime: loopWaitTime,
-		FirstN: firstN,
+		voting:            voting,
+		allia:             allia,
+		txchan:            txchan,
+		watchingMakeTxKey: watchingMakeTxKey,
+		watchingKey:       watchingKey,
+		loopWaitTime:      loopWaitTime,
+		netType:           netType,
 	}
 }
 
 func (ob *Observer) Listen() {
 	log.Info("starting observing")
-START:
-	top, err := ob.allia.GetCurrentBlockHeight()
-	if err != nil {
-		log.Errorf("[Observer] failed to get current height: %v", err)
-		time.Sleep(time.Second * 30)
-		goto START
-	}
+	top := alliaCheckPoints[ob.netType].Height
 
-	num := ob.FirstN
-	h := uint32(top)
-	count := 0
-	countTx := 0
-	log.Infof("[Observer] first to start Listen(), check %d blocks from top %d", num, top)
-	for num > 0 && h+1 > 0 {
-		events, err := ob.allia.GetSmartContractEventByBlock(h)
-		if err != nil {
-			log.Errorf("[Observer] GetSmartContractEventByBlock failed, retry after 10 sec: %v", err)
-			time.Sleep(time.Second * 10)
-			continue
-		}
-		cnt, cntTx := ob.checkEvents(events, h)
-		count += cnt
-		countTx += cntTx
-		num--
-		h--
-	}
-	log.Infof("[Observer] btc proof: total %d transactions captured from %d blocks", count, ob.FirstN)
-	log.Infof("[Observer] btc tx: total %d transactions captured from %d blocks", countTx, ob.FirstN)
-
-	log.Infof("[Observer] next, check once %d seconds", ob.LoopWaitTime)
-	tick := time.NewTicker(time.Second * time.Duration(ob.LoopWaitTime))
+	log.Infof("[AllianceObserver] get start height %d from checkpoint, check once %d seconds", top, ob.loopWaitTime)
+	tick := time.NewTicker(time.Second * time.Duration(ob.loopWaitTime))
 	defer tick.Stop()
 
 	for {
 		select {
 		case <-tick.C:
 			log.Debugf("observe once")
-			count = 0
-			countTx = 0
+			toVote, toSign := 0, 0
 			newTop, err := ob.allia.GetCurrentBlockHeight()
 			if err != nil {
 				log.Errorf("[Observer] failed to get current height, retry after 10 sec: %v", err)
-				time.Sleep(time.Second * 10)
+				<-time.Tick(time.Second * config.SleepTime)
 				continue
 			}
 
-			num := int64(newTop - top)
-			if num <= 0 {
+			if newTop-top <= 0 {
 				continue
 			}
-
-			h := newTop
-			for num > 0 {
+			h := top + 1
+			for h <= newTop {
 				events, err := ob.allia.GetSmartContractEventByBlock(h)
 				if err != nil {
-					log.Errorf("[Observer] GetSmartContractEventByBlock failed, retry after 10 sec: %v", err)
-					time.Sleep(time.Second * 10)
+					switch err.(type) {
+					case client.PostErr:
+						log.Errorf("[Observer] GetSmartContractEventByBlock failed, retry after 10 sec: %v", err)
+					default:
+						log.Errorf("[Observer] not supposed to happen: %v", err)
+					}
+					<-time.Tick(time.Second * config.SleepTime)
 					continue
 				}
-				cnt, cntTx := ob.checkEvents(events, h)
-				count += cnt
-				countTx += cntTx
-				num--
-				h--
+				voteCnt, signCnt := ob.checkEvents(events, h)
+				toVote += voteCnt
+				toSign += signCnt
+				h++
 			}
-			if count > 0 {
-				log.Infof("[Observer] btc proof: total %d transactions captured this time", count)
+			if toVote > 0 {
+				log.Infof("[Observer] btc tx to vote: total %d transactions captured this time", toVote)
 			}
-			if countTx > 0 {
-				log.Infof("[Observer] btc tx: total %d transactions captured this time", countTx)
+			if toSign > 0 {
+				log.Infof("[Observer] btc tx to sig: total %d transactions captured this time", toSign)
 			}
 			top = newTop
-			//case <-ob.quit:
-			//	log.Info("stopping observing alliance network")
-			//	return
 		}
 	}
 }
 
 func (ob *Observer) checkEvents(events []*common.SmartContactEvent, h uint32) (int, int) {
-	count := 0
-	countTx := 0
+	toVote, toSign := 0, 0
 	for _, e := range events {
 		for _, n := range e.Notify {
 			states, ok := n.States.([]interface{})
@@ -127,51 +99,53 @@ func (ob *Observer) checkEvents(events []*common.SmartContactEvent, h uint32) (i
 			}
 
 			name, ok := states[0].(string)
-			if ok && name == ob.WatchingKey {
+			if ok && name == ob.watchingKey {
 				txid := states[1].(string)
 				btcProofBytes, err := hex.DecodeString(states[2].(string))
 				if err != nil {
-					log.Errorf("[Observer] failed to decode hex: %v", err)
+					log.Errorf("[Observer] wrong hex from chain, not supposed to happen: %v", err)
 					continue
 				}
 
 				btcProof := btc.BtcProof{}
 				err = btcProof.Deserialization(mc.NewZeroCopySource(btcProofBytes))
 				if err != nil {
-					log.Errorf("[Observer] failed to deserialization: %v", err)
+					log.Errorf("[Observer] failed deserialization for btc proof from chain, not supposed to happen"+
+						": %v", err)
 					continue
 				}
 
 				ob.voting <- &btcProof
-				count++
+				toVote++
 				log.Infof("[Observer] captured %s proof when height is %d", txid, h)
-			} else if ok && name == ob.WatchingMakeTxKey {
+			} else if ok && name == ob.watchingMakeTxKey {
 				txb, err := hex.DecodeString(states[1].(string))
 				if err != nil {
-					log.Errorf("[Observer] failed to decode hex-string of tx: %v", err)
+					log.Errorf("[Observer] wrong hex-string of tx from chain, not supposed to happen: %v", err)
 					continue
 				}
 				mtx := wire.NewMsgTx(wire.TxVersion)
 				err = mtx.BtcDecode(bytes.NewBuffer(txb), wire.ProtocolVersion, wire.LatestEncoding)
 				if err != nil {
-					log.Errorf("[Observer] failed to decode btc transaction: %v", err)
+					log.Errorf("[Observer] failed to decode btc transaction from chain, not supposed to happen: "+
+						"%v", err)
 					continue
 				}
 
 				redeem, err := hex.DecodeString(states[2].(string))
 				if err != nil {
-					log.Errorf("[Observer] failed to decode hex-string of tx: %v", err)
+					log.Errorf("[Observer] failed to decode hex-string of tx, not supposed to happen: %v", err)
 					continue
 				}
 				ob.txchan <- &ToSignItem{
 					Mtx:    mtx,
 					Redeem: redeem,
 				}
-				countTx++
+				toSign++
 				log.Infof("[Observer] captured one tx when height is %d", h)
 			}
 		}
 	}
 
-	return count, countTx
+	return toVote, toSign
 }

@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	DEFAULT_LOG_LEVEL        = 2
+	DEFAULT_LOG_LEVEL   = 2
 	DEFAULT_MAXPROC_NUM = 4
 )
 

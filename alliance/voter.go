@@ -11,9 +11,12 @@ import (
 	wire_bch "github.com/gcash/bchd/wire"
 	"github.com/gcash/bchutil/merkleblock"
 	sdk "github.com/ontio/multi-chain-go-sdk"
+	"github.com/ontio/multi-chain-go-sdk/client"
 	"github.com/ontio/multi-chain/native/service/cross_chain_manager/btc"
 	"github.com/ontio/spvwallet"
+	"github.com/ontio/spvwallet/config"
 	"github.com/ontio/spvwallet/log"
+	"time"
 )
 
 type Voter struct {
@@ -22,15 +25,13 @@ type Voter struct {
 	wallet        *spvwallet.SPVWallet
 	redeemToWatch []byte
 	acct          *sdk.Account
-	gasPrice      uint64
-	gasLimit      uint64
 	WaitingDB     *WaitingDB
 	blksToWait    uint64
 	quit          chan struct{}
 }
 
 func NewVoter(allia *sdk.MultiChainSdk, voting chan *btc.BtcProof, wallet *spvwallet.SPVWallet, redeem []byte,
-	acct *sdk.Account, gasPrice uint64, gasLimit uint64, dbFile string, blksToWait uint64) (*Voter, error) {
+	acct *sdk.Account, dbFile string, blksToWait uint64) (*Voter, error) {
 	wdb, err := NewWaitingDB(dbFile)
 	if err != nil {
 		return nil, err
@@ -41,8 +42,6 @@ func NewVoter(allia *sdk.MultiChainSdk, voting chan *btc.BtcProof, wallet *spvwa
 		wallet:        wallet,
 		redeemToWatch: redeem,
 		acct:          acct,
-		gasLimit:      gasLimit,
-		gasPrice:      gasPrice,
 		WaitingDB:     wdb,
 		blksToWait:    blksToWait,
 		quit:          make(chan struct{}),
@@ -84,14 +83,20 @@ func (v *Voter) Vote() {
 
 			txHash, err := v.allia.Native.Ccm.Vote(BTC_CHAINID, v.acct.Address.ToBase58(), btcTxHash.String(), v.acct)
 			if err != nil {
-				log.Errorf("[Voter] invokeNativeContract error: %v", err)
+				switch err.(type) {
+				case client.PostErr:
+					v.voting <- item
+					log.Errorf("failed to vote and post err: %v", err)
+					<-time.Tick(time.Second * config.SleepTime)
+				default:
+					log.Errorf("[Voter] invokeNativeContract error: %v", err)
+				}
 				continue
 			}
 
 			err = v.WaitingDB.MarkVotedTx(btcTxHash[:])
 			if err != nil {
 				log.Errorf("[Voter] failed to mark tx %s: %v", err)
-				continue
 			}
 			log.Infof("[Voter] vote yes for %s and marked. Sending transaction %s to alliance chain", btcTxHash.String(),
 				txHash.ToHexString())
@@ -242,11 +247,6 @@ func (v *Voter) checkTxOuts(tx *wire.MsgTx) error {
 func (v *Voter) Restart(wallet *spvwallet.SPVWallet) {
 	v.quit = make(chan struct{})
 	v.wallet = wallet
-	//fp := v.WaitingDB.filePath
-	//v.WaitingDB, err = NewWaitingDB(fp)
-	//if err != nil {
-	//	return err
-	//}
 
 	go v.Vote()
 	go v.WaitingRetry()
@@ -254,5 +254,4 @@ func (v *Voter) Restart(wallet *spvwallet.SPVWallet) {
 
 func (v *Voter) Stop() {
 	close(v.quit)
-	//v.WaitingDB.Close()
 }

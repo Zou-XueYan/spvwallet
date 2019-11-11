@@ -5,15 +5,15 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"time"
 )
+
+var SleepTime time.Duration = 10
 
 type Config struct {
 	AllianceJsonRpcAddress string
-	GasPrice               uint64
-	GasLimit               uint64
 	WalletFile             string
 	WalletPwd              string
-	AlliaObFirstN          int64 // AlliaOb:
 	AlliaObLoopWaitTime    int64
 	WatchingKey            string
 	Redeem                 string
@@ -29,6 +29,8 @@ type Config struct {
 	RestartDuration        int
 	IsRestart              int
 	RestPort               uint64
+	SleepTime              int
+	AlliaNet               string
 }
 
 func NewConfig(file string) (*Config, error) {

@@ -118,7 +118,7 @@ func (b *Blockchain) CommitHeader(header wire.BlockHeader) (bool, *StoredHeader,
 				return newTip, commonAncestor, 0, err
 			}
 
-			if chash := commonAncestor.Header.BlockHash(); chash.IsEqual(&tipHash) {
+			if chash := commonAncestor.Header.BlockHash(); chash.IsEqual(&tipHash) { //TODO
 				commonAncestor = nil
 				log.Warnf("commonAncestor is our best %s, so make the new header %s our best", tipHash.String(), headerHash.String())
 			} else {
@@ -156,7 +156,7 @@ func (b *Blockchain) CheckHeader(header wire.BlockHeader, prevHeader StoredHeade
 	}
 
 	// Check the header meets the difficulty requirement
-	if !b.params.ReduceMinDifficulty {
+	if !b.params.ReduceMinDifficulty { //TODO: 查一下原理
 		diffTarget, err := b.calcRequiredWork(header, int32(height+1), prevHeader)
 		if err != nil {
 			log.Errorf("Error calclating difficulty", err)

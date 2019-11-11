@@ -1,22 +1,19 @@
 package alliance
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/btcsuite/btcd/wire"
 	sdk "github.com/ontio/multi-chain-go-sdk"
 	"github.com/ontio/multi-chain/common"
+	"github.com/ontio/multi-chain/common/password"
 	"github.com/ontio/multi-chain/native/service/cross_chain_manager/btc"
-	"io/ioutil"
-	"os"
 )
 
 const (
-	OP_RETURN_DATA_LEN    = 37
 	OP_RETURN_SCRIPT_FLAG = byte(0x66)
 	BTC_CHAINID           = 0
-	MIN_FEE               = 100 //TODO: set one?
+	MIN_FEE               = 100
 )
 
 type ToVoteItem struct {
@@ -31,12 +28,8 @@ type ToSignItem struct {
 	Redeem []byte
 }
 
-// func about OP_RETURN
 func ifCanResolve(paramOutput *wire.TxOut, value int64) error {
 	script := paramOutput.PkScript
-	//if int(script[1]) != OP_RETURN_DATA_LEN {
-	//	return errors.New("length of script is wrong")
-	//}
 	if script[2] != OP_RETURN_SCRIPT_FLAG {
 		return errors.New("wrong flag")
 	}
@@ -54,76 +47,21 @@ func ifCanResolve(paramOutput *wire.TxOut, value int64) error {
 	return nil
 }
 
-type AlliaConfig struct {
-	AllianceJsonRpcAddress string
-	GasPrice               uint64
-	GasLimit               uint64
-	WalletFile             string
-	WalletPwd              string
-	AlliaObFirstN          int // AlliaOb:
-	AlliaObLoopWaitTime    int64
-	WatchingKey            string
-	Redeem                 string
-	WaitingDBPath          string
-	BlksToWait             uint64
-	BtcPrivk               string
-	WatchingMakeTxKey      string
-
-}
-
-func NewAlliaConfig(file string) (*AlliaConfig, error) {
-	conf := &AlliaConfig{}
-	err := conf.Init(file)
-	if err != nil {
-		return conf, fmt.Errorf("failed to new config: %v", err)
-	}
-	return conf, nil
-}
-
-func (this *AlliaConfig) Init(fileName string) error {
-	err := this.loadConfig(fileName)
-	if err != nil {
-		return fmt.Errorf("loadConfig error:%s", err)
-	}
-	return nil
-}
-
-func (this *AlliaConfig) loadConfig(fileName string) error {
-	data, err := this.readFile(fileName)
-	if err != nil {
-		return err
-	}
-	err = json.Unmarshal(data, this)
-	if err != nil {
-		return fmt.Errorf("json.Unmarshal TestConfig:%s error:%s", data, err)
-	}
-	return nil
-}
-
-func (this *AlliaConfig) readFile(fileName string) ([]byte, error) {
-	file, err := os.OpenFile(fileName, os.O_RDONLY, 0666)
-	if err != nil {
-		return nil, fmt.Errorf("OpenFile %s error %s", fileName, err)
-	}
-	defer func() {
-		err := file.Close()
-		if err != nil {
-			fmt.Println(fmt.Errorf("file %s close error %s", fileName, err))
-		}
-	}()
-	data, err := ioutil.ReadAll(file)
-	if err != nil {
-		return nil, fmt.Errorf("ioutil.ReadAll %s error %s", fileName, err)
-	}
-	return data, nil
-}
-
 func GetAccountByPassword(sdk *sdk.MultiChainSdk, path, pwd string) (*sdk.Account, error) {
 	wallet, err := sdk.OpenWallet(path)
 	if err != nil {
 		return nil, fmt.Errorf("open wallet error: %v", err)
 	}
-	user, err := wallet.GetDefaultAccount([]byte(pwd))
+	pwdb := []byte{}
+	if pwd == "" {
+		pwdb, err = password.GetPassword()
+		if err != nil {
+			return nil, fmt.Errorf("getPassword error: %v", err)
+		}
+	} else {
+		pwdb = []byte(pwd)
+	}
+	user, err := wallet.GetDefaultAccount(pwdb)
 	if err != nil {
 		return nil, fmt.Errorf("getDefaultAccount error: %v", err)
 	}

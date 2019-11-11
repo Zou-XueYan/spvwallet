@@ -110,10 +110,11 @@ func (w *WaitingDB) GetUnderHeightAndDelete(height uint32) ([]*btc.BtcProof, [][
 			if err != nil {
 				return err
 			}
-
 			if p.Height <= height {
+				key := make([]byte, len(k))
+				copy(key, k)
 				arr = append(arr, p)
-				keys = append(keys, k)
+				keys = append(keys, key)
 			}
 			return nil
 		})

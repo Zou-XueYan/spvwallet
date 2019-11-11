@@ -9,7 +9,10 @@ import (
 	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/btcutil/base58"
 	sdk "github.com/ontio/multi-chain-go-sdk"
+	"github.com/ontio/multi-chain-go-sdk/client"
+	"github.com/ontio/spvwallet/config"
 	"github.com/ontio/spvwallet/log"
+	"time"
 )
 
 type Signer struct {
@@ -18,12 +21,10 @@ type Signer struct {
 	addr     *btcutil.AddressPubKey
 	allia    *sdk.MultiChainSdk
 	acct     *sdk.Account
-	gasPrice uint64
-	gasLimit uint64
 }
 
-func NewSigner(privk string, txchan chan *ToSignItem, acct *sdk.Account, gasPrice uint64,
-	gasLimit uint64, allia *sdk.MultiChainSdk, params *chaincfg.Params) (*Signer, error) {
+func NewSigner(privk string, txchan chan *ToSignItem, acct *sdk.Account, allia *sdk.MultiChainSdk,
+	params *chaincfg.Params) (*Signer, error) {
 	privKey, pubk := btcec.PrivKeyFromBytes(btcec.S256(), base58.Decode(privk))
 	addrPubK, err := btcutil.NewAddressPubKey(pubk.SerializeCompressed(), params)
 	if err != nil {
@@ -34,8 +35,6 @@ func NewSigner(privk string, txchan chan *ToSignItem, acct *sdk.Account, gasPric
 		privk:    privKey,
 		addr:     addrPubK,
 		acct:     acct,
-		gasPrice: gasPrice,
-		gasLimit: gasLimit,
 		allia:    allia,
 	}, nil
 }
@@ -49,12 +48,20 @@ func (signer *Signer) Signing() {
 			txHash := item.Mtx.TxHash()
 			sigs, err := signer.getSigs(item.Mtx, item.Redeem)
 			if err != nil {
-				log.Errorf("[Signer] failed to sign (unsigned tx hash %s): %v", txHash.String(), err)
+				log.Errorf("[Signer] failed to sign (unsigned tx hash %s), not supposed to happen: "+
+					"%v", txHash.String(), err)
 				continue
 			}
 			txid, err := signer.allia.Native.Ccm.BtcMultiSign(txHash[:], signer.addr.EncodeAddress(), sigs, signer.acct)
 			if err != nil {
-				log.Errorf("[Signer] failed to invoke alliance: %v", err)
+				switch err.(type) {
+				case client.PostErr:
+					signer.txchan <- item
+					log.Errorf("[Signer] post err and would retry after %d sec: %v", config.SleepTime, err)
+					<-time.Tick(time.Second * config.SleepTime)
+				default:
+					log.Errorf("[Signer] failed to invoke alliance: %v", err)
+				}
 				continue
 			}
 			log.Infof("[Signer] signed for btc tx %s and send tx %s to alliance", txHash.String(), txid.ToHexString())
