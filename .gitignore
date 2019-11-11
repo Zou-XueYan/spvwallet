@@ -26,4 +26,5 @@ _testmain.go
 *.iml
 .gx/
 
+btcprivk
 wallet.dat
