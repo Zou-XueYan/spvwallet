@@ -1,4 +1,4 @@
-package spvwallet
+package spvclient
 
 import (
 	"github.com/btcsuite/btcd/chaincfg"
@@ -7,9 +7,9 @@ import (
 	btc "github.com/btcsuite/btcutil"
 	hd "github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/btcsuite/btcwallet/wallet/txrules"
-	"github.com/ontio/spvwallet/chain"
-	"github.com/ontio/spvwallet/log"
-	"github.com/ontio/spvwallet/netserv"
+	"github.com/ontio/spvclient/chain"
+	"github.com/ontio/spvclient/log"
+	"github.com/ontio/spvclient/netserv"
 	"time"
 )
 

@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ontio/spvwallet/log"
-	"github.com/ontio/spvwallet/rest/http/common"
+	"github.com/ontio/spvclient/log"
+	"github.com/ontio/spvclient/rest/http/common"
 )
 
 type ApiServer interface {

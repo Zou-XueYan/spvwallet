@@ -10,8 +10,8 @@ import (
 	"github.com/btcsuite/btcutil/base58"
 	sdk "github.com/ontio/multi-chain-go-sdk"
 	"github.com/ontio/multi-chain-go-sdk/client"
-	"github.com/ontio/spvwallet/config"
-	"github.com/ontio/spvwallet/log"
+	"github.com/ontio/spvclient/config"
+	"github.com/ontio/spvclient/log"
 	"time"
 )
 

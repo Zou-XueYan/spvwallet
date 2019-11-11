@@ -2,7 +2,7 @@ package netserv
 
 import (
 	"errors"
-	"github.com/ontio/spvwallet/log"
+	"github.com/ontio/spvclient/log"
 	"net"
 	"strconv"
 	"sync"

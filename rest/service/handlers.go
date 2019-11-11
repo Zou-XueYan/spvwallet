@@ -5,19 +5,19 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/ontio/spvwallet"
-	"github.com/ontio/spvwallet/log"
-	"github.com/ontio/spvwallet/rest/http/common"
-	"github.com/ontio/spvwallet/rest/http/restful"
-	"github.com/ontio/spvwallet/rest/utils"
+	"github.com/ontio/spvclient"
+	"github.com/ontio/spvclient/log"
+	"github.com/ontio/spvclient/rest/http/common"
+	"github.com/ontio/spvclient/rest/http/restful"
+	"github.com/ontio/spvclient/rest/utils"
 	"time"
 )
 
 type Service struct {
-	wallet *spvwallet.SPVWallet
+	wallet *spvclient.SPVWallet
 }
 
-func NewService(wallet *spvwallet.SPVWallet) *Service {
+func NewService(wallet *spvclient.SPVWallet) *Service {
 	return &Service{
 		wallet: wallet,
 	}

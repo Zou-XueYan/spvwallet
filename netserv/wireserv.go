@@ -5,8 +5,8 @@ import (
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	peerpkg "github.com/btcsuite/btcd/peer"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/ontio/spvwallet/chain"
-	"github.com/ontio/spvwallet/log"
+	"github.com/ontio/spvclient/chain"
+	"github.com/ontio/spvclient/log"
 	"net"
 	"time"
 )

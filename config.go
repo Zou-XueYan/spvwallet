@@ -1,4 +1,4 @@
-package spvwallet
+package spvclient
 
 import (
 	"github.com/btcsuite/btcd/chaincfg"
@@ -104,7 +104,7 @@ func NewDefaultConfig() *Config {
 	return &Config{
 		IsVote:    false,
 		Params:    &chaincfg.MainNetParams,
-		UserAgent: "spvwallet",
+		UserAgent: "spvclient",
 		RepoPath:  repoPath,
 		//LowFee:    20,
 		//MediumFee: 30,
@@ -118,12 +118,12 @@ func NewDefaultConfig() *Config {
 func getRepoPath() (string, error) {
 	// Set default base path and directory name
 	path := "~"
-	directoryName := "spvwallet"
+	directoryName := "spvclient"
 
 	// Override OS-specific names
 	switch runtime.GOOS {
 	case "linux":
-		directoryName = ".spvwallet"
+		directoryName = ".spvclient"
 	case "darwin":
 		path = "~/"
 	}

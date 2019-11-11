@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/ontio/spvwallet/log"
+	"github.com/ontio/spvclient/log"
 	"io"
 	"math/big"
 	"path"

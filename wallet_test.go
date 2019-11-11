@@ -1,10 +1,10 @@
-package spvwallet
+package spvclient
 
 import (
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcutil"
-	"github.com/ontio/spvwallet/db"
-	"github.com/ontio/spvwallet/log"
+	"github.com/ontio/spvclient/db"
+	"github.com/ontio/spvclient/log"
 	"os"
 	"testing"
 	"time"
@@ -35,7 +35,7 @@ func TestSPVWallet_Restart(t *testing.T) {
 	//wallet.Close()
 	//wallet, err = NewSPVWallet(config)
 	//if err != nil {
-	//	t.Fatalf("Failed to new a spvwallet: %v", err)
+	//	t.Fatalf("Failed to new a spvclient: %v", err)
 	//}
 	//wallet.AddWatchedAddress(wa)
 	//wallet.Start()

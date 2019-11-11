@@ -3,7 +3,7 @@ package utils
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/ontio/spvwallet/rest/http/common"
+	"github.com/ontio/spvclient/rest/http/common"
 )
 
 func ParseParams(req interface{}, params map[string]interface{}) error {
@@ -34,7 +34,7 @@ func RefactorResp(resp *common.Response, errCode uint32) (map[string]interface{}
 
 //// only for cross chain
 //func EstimateSerializedTxSize(inputCount int, txOuts []*wire.TxOut) int {
-//	multi5of7InputSize := 32 + 4 + 1 + 4 + spvwallet.RedeemP2SH5of7MultisigSigScriptSize
+//	multi5of7InputSize := 32 + 4 + 1 + 4 + spvclient.RedeemP2SH5of7MultisigSigScriptSize
 //
 //	outsSize := 0
 //	for _, txOut := range txOuts {
@@ -42,5 +42,5 @@ func RefactorResp(resp *common.Response, errCode uint32) (map[string]interface{}
 //	}
 //
 //	return 10 + wire.VarIntSerializeSize(uint64(inputCount)) + wire.VarIntSerializeSize(uint64(len(txOuts)+1)) +
-//		inputCount*multi5of7InputSize + spvwallet.MaxP2SHScriptSize + outsSize
+//		inputCount*multi5of7InputSize + spvclient.MaxP2SHScriptSize + outsSize
 //}

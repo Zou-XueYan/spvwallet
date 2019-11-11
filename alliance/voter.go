@@ -13,16 +13,16 @@ import (
 	sdk "github.com/ontio/multi-chain-go-sdk"
 	"github.com/ontio/multi-chain-go-sdk/client"
 	"github.com/ontio/multi-chain/native/service/cross_chain_manager/btc"
-	"github.com/ontio/spvwallet"
-	"github.com/ontio/spvwallet/config"
-	"github.com/ontio/spvwallet/log"
+	"github.com/ontio/spvclient"
+	"github.com/ontio/spvclient/config"
+	"github.com/ontio/spvclient/log"
 	"time"
 )
 
 type Voter struct {
 	allia         *sdk.MultiChainSdk
 	voting        chan *btc.BtcProof
-	wallet        *spvwallet.SPVWallet
+	wallet        *spvclient.SPVWallet
 	redeemToWatch []byte
 	acct          *sdk.Account
 	WaitingDB     *WaitingDB
@@ -30,7 +30,7 @@ type Voter struct {
 	quit          chan struct{}
 }
 
-func NewVoter(allia *sdk.MultiChainSdk, voting chan *btc.BtcProof, wallet *spvwallet.SPVWallet, redeem []byte,
+func NewVoter(allia *sdk.MultiChainSdk, voting chan *btc.BtcProof, wallet *spvclient.SPVWallet, redeem []byte,
 	acct *sdk.Account, dbFile string, blksToWait uint64) (*Voter, error) {
 	wdb, err := NewWaitingDB(dbFile)
 	if err != nil {
@@ -244,7 +244,7 @@ func (v *Voter) checkTxOuts(tx *wire.MsgTx) error {
 	return nil
 }
 
-func (v *Voter) Restart(wallet *spvwallet.SPVWallet) {
+func (v *Voter) Restart(wallet *spvclient.SPVWallet) {
 	v.quit = make(chan struct{})
 	v.wallet = wallet
 

@@ -9,8 +9,8 @@ import (
 	"github.com/ontio/multi-chain-go-sdk/common"
 	mc "github.com/ontio/multi-chain/common"
 	"github.com/ontio/multi-chain/native/service/cross_chain_manager/btc"
-	"github.com/ontio/spvwallet/config"
-	"github.com/ontio/spvwallet/log"
+	"github.com/ontio/spvclient/config"
+	"github.com/ontio/spvclient/log"
 	"time"
 )
 

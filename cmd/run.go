@@ -7,12 +7,12 @@ import (
 	"github.com/google/gops/agent"
 	sdk "github.com/ontio/multi-chain-go-sdk"
 	"github.com/ontio/multi-chain/native/service/cross_chain_manager/btc"
-	"github.com/ontio/spvwallet"
-	"github.com/ontio/spvwallet/alliance"
-	"github.com/ontio/spvwallet/config"
-	"github.com/ontio/spvwallet/log"
-	"github.com/ontio/spvwallet/rest/http/restful"
-	"github.com/ontio/spvwallet/rest/service"
+	"github.com/ontio/spvclient"
+	"github.com/ontio/spvclient/alliance"
+	"github.com/ontio/spvclient/config"
+	"github.com/ontio/spvclient/log"
+	"github.com/ontio/spvclient/rest/http/restful"
+	"github.com/ontio/spvclient/rest/service"
 	"github.com/urfave/cli"
 	"net"
 	"os"
@@ -29,12 +29,12 @@ func setupApp() *cli.App {
 	app.Action = run
 	app.Copyright = ""
 	app.Flags = []cli.Flag{
-		spvwallet.LogLevelFlag,
-		spvwallet.ConfigFile,
-		spvwallet.GoMaxProcs,
+		spvclient.LogLevelFlag,
+		spvclient.ConfigFile,
+		spvclient.GoMaxProcs,
 	}
 	app.Before = func(context *cli.Context) error {
-		cores := context.GlobalInt(spvwallet.GoMaxProcs.Name)
+		cores := context.GlobalInt(spvclient.GoMaxProcs.Name)
 		runtime.GOMAXPROCS(cores)
 		return nil
 	}
@@ -53,10 +53,10 @@ func main() {
 }
 
 func run(ctx *cli.Context) {
-	logLevel := ctx.GlobalInt(spvwallet.GetFlagName(spvwallet.LogLevelFlag))
+	logLevel := ctx.GlobalInt(spvclient.GetFlagName(spvclient.LogLevelFlag))
 	log.InitLog(logLevel, log.Stdout)
 
-	conf, err := config.NewConfig(ctx.GlobalString(spvwallet.GetFlagName(spvwallet.ConfigFile)))
+	conf, err := config.NewConfig(ctx.GlobalString(spvclient.GetFlagName(spvclient.ConfigFile)))
 	if err != nil {
 		log.Errorf("failed to new a config: %v", err)
 		os.Exit(1)
@@ -107,8 +107,8 @@ func run(ctx *cli.Context) {
 	}
 }
 
-func startSpv(c *config.Config, netType *chaincfg.Params) (*spvwallet.SPVWallet, error) {
-	conf := spvwallet.NewDefaultConfig()
+func startSpv(c *config.Config, netType *chaincfg.Params) (*spvclient.SPVWallet, error) {
+	conf := spvclient.NewDefaultConfig()
 	conf.IsVote = c.RunVote == 1
 
 	if c.ConfigDBPath != "" {
@@ -123,7 +123,7 @@ func startSpv(c *config.Config, netType *chaincfg.Params) (*spvwallet.SPVWallet,
 		conf.TrustedPeer, _ = net.ResolveTCPAddr("tcp", c.TrustedPeer+":"+conf.Params.DefaultPort)
 	}
 
-	wallet, err := spvwallet.NewSPVWallet(conf)
+	wallet, err := spvclient.NewSPVWallet(conf)
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +132,7 @@ func startSpv(c *config.Config, netType *chaincfg.Params) (*spvwallet.SPVWallet,
 	return wallet, nil
 }
 
-func startServer(conf *config.Config, wallet *spvwallet.SPVWallet) (restful.ApiServer, error) {
+func startServer(conf *config.Config, wallet *spvclient.SPVWallet) (restful.ApiServer, error) {
 	serv := service.NewService(wallet)
 	restServer := restful.InitRestServer(serv, conf.RestPort)
 	go restServer.Start()
@@ -140,7 +140,7 @@ func startServer(conf *config.Config, wallet *spvwallet.SPVWallet) (restful.ApiS
 	return restServer, nil
 }
 
-func startAllianceService(conf *config.Config, wallet *spvwallet.SPVWallet, voting chan *btc.BtcProof,
+func startAllianceService(conf *config.Config, wallet *spvclient.SPVWallet, voting chan *btc.BtcProof,
 	txchan chan *alliance.ToSignItem, params *chaincfg.Params) (*alliance.Observer, *alliance.Voter, error) {
 	allia := sdk.NewMultiChainSdk()
 	allia.NewRpcClient().SetAddress(conf.AllianceJsonRpcAddress)
@@ -175,7 +175,7 @@ func startAllianceService(conf *config.Config, wallet *spvwallet.SPVWallet, voti
 	return ob, v, nil
 }
 
-func resyncSpv(wallet *spvwallet.SPVWallet, dura int) {
+func resyncSpv(wallet *spvclient.SPVWallet, dura int) {
 	sh, err := wallet.Blockchain.BestBlock()
 	if err != nil {
 		log.Fatalf("Failed to get best block: %v", err)
@@ -219,10 +219,10 @@ func resyncSpv(wallet *spvwallet.SPVWallet, dura int) {
 			wallet.ReSync()
 			//wallet.Close()
 			//
-			//wallet, _ = spvwallet.NewSPVWallet(config)
+			//wallet, _ = spvclient.NewSPVWallet(config)
 			//wallet.Start()
 
-			//if ctx.GlobalInt(spvwallet.RunRest.Name) == 1 {
+			//if ctx.GlobalInt(spvclient.RunRest.Name) == 1 {
 			//	restServer, err = startServer(ctx, wallet)
 			//	if err != nil {
 			//		log.Fatalf("Failed to restart rest service: %v", err)
