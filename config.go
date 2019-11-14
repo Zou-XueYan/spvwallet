@@ -1,7 +1,7 @@
 package spvwallet
 
 import (
-	"github.com/Zou-XueYan/spvwallet/interface"
+	"github.com/ontio/spvclient/interface"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/mitchellh/go-homedir"
 	"golang.org/x/net/proxy"

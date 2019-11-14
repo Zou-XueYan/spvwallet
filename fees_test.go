@@ -2,7 +2,7 @@ package spvwallet
 
 import (
 	"bytes"
-	"github.com/Zou-XueYan/spvwallet/interface"
+	"github.com/ontio/spvclient/interface"
 	"net/http"
 	"testing"
 )

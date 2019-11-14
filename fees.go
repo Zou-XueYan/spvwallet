@@ -2,7 +2,7 @@ package spvwallet
 
 import (
 	"encoding/json"
-	"github.com/Zou-XueYan/spvwallet/interface"
+	"github.com/ontio/spvclient/interface"
 	"golang.org/x/net/proxy"
 	"math"
 	"net"

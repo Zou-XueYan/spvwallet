@@ -1,8 +1,8 @@
 package spvwallet
 
 import (
-	"github.com/Zou-XueYan/spvwallet/db"
-	"github.com/Zou-XueYan/spvwallet/log"
+	"github.com/ontio/spvclient/db"
+	"github.com/ontio/spvclient/log"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcutil"
 	"os"

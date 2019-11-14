@@ -2,7 +2,7 @@ package alliance
 
 import (
 	"encoding/hex"
-	"github.com/Zou-XueYan/spvwallet/log"
+	"github.com/ontio/spvclient/log"
 	mcommon "github.com/ontio/multi-chain/common"
 	"github.com/ontio/multi-chain/native/service/cross_chain_manager/btc"
 	sdk "github.com/ontio/ontology-go-sdk"

@@ -1,7 +1,7 @@
 package spvwallet
 
 import (
-	"github.com/Zou-XueYan/spvwallet/log"
+	"github.com/ontio/spvclient/log"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	peerpkg "github.com/btcsuite/btcd/peer"

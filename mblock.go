@@ -2,7 +2,7 @@ package spvwallet
 
 import (
 	"fmt"
-	"github.com/Zou-XueYan/spvwallet/log"
+	"github.com/ontio/spvclient/log"
 
 	"errors"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"

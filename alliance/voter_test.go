@@ -3,8 +3,8 @@ package alliance
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/Zou-XueYan/spvwallet"
-	"github.com/Zou-XueYan/spvwallet/db"
+	"github.com/ontio/spvclient"
+	"github.com/ontio/spvclient/db"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/ontio/multi-chain/common"
 	"github.com/ontio/multi-chain/native/service/cross_chain_manager/btc"

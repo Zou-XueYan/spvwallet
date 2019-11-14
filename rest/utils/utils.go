@@ -3,8 +3,8 @@ package utils
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/Zou-XueYan/spvwallet"
-	"github.com/Zou-XueYan/spvwallet/rest/http/common"
+	"github.com/ontio/spvclient"
+	"github.com/ontio/spvclient/rest/http/common"
 	"github.com/btcsuite/btcd/wire"
 )
 

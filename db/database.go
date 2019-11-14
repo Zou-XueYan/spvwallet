@@ -2,7 +2,7 @@ package db
 
 import (
 	"database/sql"
-	"github.com/Zou-XueYan/spvwallet/interface"
+	"github.com/ontio/spvclient/interface"
 	_ "github.com/mattn/go-sqlite3"
 	"path"
 	"sync"

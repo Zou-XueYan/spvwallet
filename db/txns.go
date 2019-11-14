@@ -3,7 +3,7 @@ package db
 import (
 	"bytes"
 	"database/sql"
-	"github.com/Zou-XueYan/spvwallet/interface"
+	"github.com/ontio/spvclient/interface"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
 	"sync"

@@ -9,10 +9,10 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/Zou-XueYan/spvwallet/log"
+	"github.com/ontio/spvclient/log"
 	"time"
 
-	"github.com/Zou-XueYan/spvwallet/interface"
+	"github.com/ontio/spvclient/interface"
 	"github.com/btcsuite/btcd/blockchain"
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"

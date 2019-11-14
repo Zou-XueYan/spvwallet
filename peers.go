@@ -2,7 +2,7 @@ package spvwallet
 
 import (
 	"errors"
-	"github.com/Zou-XueYan/spvwallet/log"
+	"github.com/ontio/spvclient/log"
 	"net"
 	"strconv"
 	"sync"
