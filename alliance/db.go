@@ -1,10 +1,13 @@
 package alliance
 
 import (
+	"encoding/binary"
 	"errors"
+	"fmt"
 	"github.com/boltdb/bolt"
 	"github.com/ontio/multi-chain/common"
 	"github.com/ontio/multi-chain/native/service/cross_chain_manager/btc"
+	"github.com/ontio/spvclient/log"
 	"path"
 	"strings"
 	"sync"
@@ -13,15 +16,18 @@ import (
 var (
 	BKTWaiting = []byte("Waiting")
 	BKTVoted   = []byte("voted")
+	BKTHeight  = []byte("last")
+	KEYHeight  = []byte("last")
 )
 
 type WaitingDB struct {
 	lock     *sync.RWMutex
 	db       *bolt.DB
 	filePath string
+	maxReadSize int64
 }
 
-func NewWaitingDB(filePath string) (*WaitingDB, error) {
+func NewWaitingDB(filePath string, maxReadSize int64) (*WaitingDB, error) {
 	if !strings.Contains(filePath, ".bin") {
 		filePath = path.Join(filePath, "waiting.bin")
 	}
@@ -33,6 +39,7 @@ func NewWaitingDB(filePath string) (*WaitingDB, error) {
 	w.db = db
 	w.lock = new(sync.RWMutex)
 	w.filePath = filePath
+	w.maxReadSize = maxReadSize
 
 	if err = db.Update(func(btx *bolt.Tx) error {
 		_, err := btx.CreateBucketIfNotExists(BKTWaiting)
@@ -45,12 +52,51 @@ func NewWaitingDB(filePath string) (*WaitingDB, error) {
 			return err
 		}
 
+		_, err = btx.CreateBucketIfNotExists(BKTHeight)
+		if err != nil {
+			return err
+		}
+
 		return nil
 	}); err != nil {
 		return nil, err
 	}
 
 	return w, nil
+}
+
+func (w *WaitingDB) SetHeight(height uint32) error {
+	w.lock.Lock()
+	defer w.lock.Unlock()
+	val := make([]byte, 4)
+	binary.LittleEndian.PutUint32(val, height)
+
+	return w.db.Update(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket(BKTHeight)
+		err := bucket.Put(KEYHeight, val)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+}
+
+func (w *WaitingDB) GetHeight() uint32 {
+	w.lock.RLock()
+	w.lock.RUnlock()
+	var height uint32
+	w.db.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket(BKTHeight)
+		val := bucket.Get(KEYHeight)
+		if val == nil {
+			height = 0
+			return nil
+		}
+		height = binary.LittleEndian.Uint32(val)
+		return nil
+	})
+
+	return height
 }
 
 func (w *WaitingDB) Put(txid []byte, item *btc.BtcProof) error {
@@ -103,6 +149,7 @@ func (w *WaitingDB) GetUnderHeightAndDelete(height uint32) ([]*btc.BtcProof, [][
 	arr := make([]*btc.BtcProof, 0)
 	keys := make([][]byte, 0)
 	err := w.db.Update(func(tx *bolt.Tx) error {
+		total := int64(0)
 		bw := tx.Bucket(BKTWaiting)
 		err := bw.ForEach(func(k, v []byte) error {
 			p := &btc.BtcProof{}
@@ -115,11 +162,21 @@ func (w *WaitingDB) GetUnderHeightAndDelete(height uint32) ([]*btc.BtcProof, [][
 				copy(key, k)
 				arr = append(arr, p)
 				keys = append(keys, key)
+				if total += int64(len(k)); total > w.maxReadSize {
+					 return OverSizeErr {
+					 	Err: fmt.Errorf("reading %d over maxsize %d", total, w.maxReadSize),
+					 }
+				}
 			}
 			return nil
 		})
 		if err != nil {
-			return err
+			switch err.(type) {
+			case OverSizeErr:
+				log.Errorf("GetUnderHeightAndDelete, %v", err)
+			default:
+				return err
+			}
 		}
 
 		for _, k := range keys {
@@ -206,4 +263,12 @@ func (w *WaitingDB) Close() {
 	w.lock.Lock()
 	w.db.Close()
 	w.lock.Unlock()
+}
+
+type OverSizeErr struct {
+	Err error
+}
+
+func (err OverSizeErr) Error() string {
+	return err.Err.Error()
 }

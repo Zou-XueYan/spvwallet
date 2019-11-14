@@ -79,4 +79,3 @@ func (err LessConfirmationError) Error() string {
 func (err *LessConfirmationError) String() string {
 	return err.Err.Error()
 }
-

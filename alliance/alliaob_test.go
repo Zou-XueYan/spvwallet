@@ -22,11 +22,7 @@ func TestNewObserver(t *testing.T) {
 	voting := make(chan *btc.BtcProof, 10)
 
 	txc := make(chan *ToSignItem)
-	NewObserver(allia, &ObConfig{
-		FirstN:       10,
-		LoopWaitTime: 2,
-		WatchingKey:  "notifyBtcProof",
-	}, voting, txc)
+	NewObserver(allia, voting, txc, 10, "", "", "", nil, 10)
 }
 
 func TestObserver_Listen(t *testing.T) {
@@ -35,11 +31,8 @@ func TestObserver_Listen(t *testing.T) {
 	voting := make(chan *btc.BtcProof, 10)
 
 	txc := make(chan *ToSignItem)
-	ob := NewObserver(allia, &ObConfig{
-		FirstN:       10,
-		LoopWaitTime: 2,
-		WatchingKey:  "notifyBtcProof",
-	}, voting, txc)
+	ob := NewObserver(allia, voting, txc, 10, "", "", "", nil, 10)
+
 	log.InitLog(2, log.Stdout)
 
 	go ob.Listen()
@@ -53,12 +46,8 @@ func TestObserver_checkEvents(t *testing.T) {
 	voting := make(chan *btc.BtcProof, 10)
 
 	txc := make(chan *ToSignItem, 10)
-	ob := NewObserver(allia, &ObConfig{
-		FirstN:            10,
-		LoopWaitTime:      2,
-		WatchingKey:       "notifyBtcProof",
-		WatchingMakeTxKey: "btcTxToRelay",
-	}, voting, txc)
+	ob := NewObserver(allia, voting, txc, 10, "", "", "", nil, 10)
+
 	log.InitLog(2, log.Stdout)
 
 	sink := mcommon.NewZeroCopySink(nil)

@@ -13,15 +13,16 @@ import (
 	"github.com/ontio/spvclient/config"
 	"github.com/ontio/spvclient/log"
 	"io/ioutil"
+	"strings"
 	"time"
 )
 
 type Signer struct {
-	txchan   chan *ToSignItem
-	privk    *btcec.PrivateKey
-	addr     *btcutil.AddressPubKey
-	allia    *sdk.MultiChainSdk
-	acct     *sdk.Account
+	txchan chan *ToSignItem
+	privk  *btcec.PrivateKey
+	addr   *btcutil.AddressPubKey
+	allia  *sdk.MultiChainSdk
+	acct   *sdk.Account
 }
 
 func NewSigner(privkFile string, txchan chan *ToSignItem, acct *sdk.Account, allia *sdk.MultiChainSdk,
@@ -30,17 +31,25 @@ func NewSigner(privkFile string, txchan chan *ToSignItem, acct *sdk.Account, all
 	if err != nil {
 		return nil, fmt.Errorf("failed to read btc privk: %v", err)
 	}
-	privKey, pubk := btcec.PrivKeyFromBytes(btcec.S256(), base58.Decode(string(data)))
+
+	privk := string(data)
+	privk = strings.TrimFunc(privk, func(r rune) bool {
+		if r == ' ' || r == '\n' {
+			return true
+		}
+		return false
+	})
+	privKey, pubk := btcec.PrivKeyFromBytes(btcec.S256(), base58.Decode(privk))
 	addrPubK, err := btcutil.NewAddressPubKey(pubk.SerializeCompressed(), params)
 	if err != nil {
 		return nil, err
 	}
 	return &Signer{
-		txchan:   txchan,
-		privk:    privKey,
-		addr:     addrPubK,
-		acct:     acct,
-		allia:    allia,
+		txchan: txchan,
+		privk:  privKey,
+		addr:   addrPubK,
+		acct:   acct,
+		allia:  allia,
 	}, nil
 }
 

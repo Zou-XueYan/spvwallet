@@ -31,6 +31,8 @@ type Config struct {
 	RestPort               uint64
 	SleepTime              int
 	AlliaNet               string
+	CircleToSaveHeight     uint32
+	MaxReadSize            int64
 }
 
 func NewConfig(file string) (*Config, error) {

@@ -148,17 +148,19 @@ func startAllianceService(conf *config.Config, wallet *spvclient.SPVWallet, voti
 	if err != nil {
 		return nil, nil, fmt.Errorf("GetAccountByPassword failed: %v", err)
 	}
-
+	wdb, err := alliance.NewWaitingDB(conf.WaitingDBPath, conf.MaxReadSize)
+	if err != nil {
+		return nil, nil, err
+	}
 	ob := alliance.NewObserver(allia, voting, txchan, conf.AlliaObLoopWaitTime, conf.WatchingKey, conf.WatchingMakeTxKey,
-		conf.AlliaNet)
+		conf.AlliaNet, wdb, conf.CircleToSaveHeight)
 	go ob.Listen()
 
-	redeem, err := hex.DecodeString(conf.Redeem)
+	redeem, err := hex.DecodeString(conf.Redeem) //TODO: vote should get redeem from chain
 	if err != nil {
 		return ob, nil, fmt.Errorf("failed to decode redeem %s: %v", conf.Redeem, err)
 	}
-	v, err := alliance.NewVoter(allia, voting, wallet, redeem, acct, conf.WaitingDBPath,
-		conf.BlksToWait)
+	v, err := alliance.NewVoter(allia, voting, wallet, redeem, acct, wdb, conf.BlksToWait)
 	if err != nil {
 		return ob, v, fmt.Errorf("failed to new a voter: %v", err)
 	}

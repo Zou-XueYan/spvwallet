@@ -31,11 +31,7 @@ type Voter struct {
 }
 
 func NewVoter(allia *sdk.MultiChainSdk, voting chan *btc.BtcProof, wallet *spvclient.SPVWallet, redeem []byte,
-	acct *sdk.Account, dbFile string, blksToWait uint64) (*Voter, error) {
-	wdb, err := NewWaitingDB(dbFile)
-	if err != nil {
-		return nil, err
-	}
+	acct *sdk.Account, wdb *WaitingDB, blksToWait uint64) (*Voter, error) {
 	return &Voter{
 		allia:         allia,
 		voting:        voting,

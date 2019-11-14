@@ -22,10 +22,12 @@ type Observer struct {
 	watchingKey       string
 	watchingMakeTxKey string
 	netType           string
+	db                *WaitingDB
+	waitingCircle     uint32
 }
 
 func NewObserver(allia *sdk.MultiChainSdk, voting chan *btc.BtcProof, txchan chan *ToSignItem, loopWaitTime int64,
-	watchingKey, watchingMakeTxKey, netType string) *Observer {
+	watchingKey, watchingMakeTxKey, netType string, db *WaitingDB, circle uint32) *Observer {
 	return &Observer{
 		voting:            voting,
 		allia:             allia,
@@ -34,13 +36,17 @@ func NewObserver(allia *sdk.MultiChainSdk, voting chan *btc.BtcProof, txchan cha
 		watchingKey:       watchingKey,
 		loopWaitTime:      loopWaitTime,
 		netType:           netType,
+		db:                db,
+		waitingCircle:     circle,
 	}
 }
 
 func (ob *Observer) Listen() {
 	log.Info("starting observing")
-	top := alliaCheckPoints[ob.netType].Height
-
+	top := ob.db.GetHeight()
+	if top < alliaCheckPoints[ob.netType].Height {
+		top = alliaCheckPoints[ob.netType].Height
+	}
 	log.Infof("[AllianceObserver] get start height %d from checkpoint, check once %d seconds", top, ob.loopWaitTime)
 	tick := time.NewTicker(time.Second * time.Duration(ob.loopWaitTime))
 	defer tick.Stop()
@@ -85,6 +91,12 @@ func (ob *Observer) Listen() {
 				log.Infof("[Observer] btc tx to sig: total %d transactions captured this time", toSign)
 			}
 			top = newTop
+			if toVote+toSign > 0 || top%ob.waitingCircle == 0 {
+				err := ob.db.SetHeight(top)
+				if err != nil {
+					log.Errorf("[Observer] failed to set height: %v", err)
+				}
+			}
 		}
 	}
 }

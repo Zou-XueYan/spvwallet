@@ -30,7 +30,7 @@ func init() {
 }
 
 func TestNewWaitingDB(t *testing.T) {
-	_, err := NewWaitingDB("")
+	_, err := NewWaitingDB("", 100)
 	if err != nil {
 		t.Fatalf("Failed to new a db: %v", err)
 	}
@@ -42,7 +42,7 @@ func TestNewWaitingDB(t *testing.T) {
 }
 
 func TestWaitingDB_Put(t *testing.T) {
-	db, err := NewWaitingDB("")
+	db, err := NewWaitingDB("", 100)
 	if err != nil {
 		t.Fatalf("Failed to new a db: %v", err)
 	}
@@ -69,7 +69,7 @@ func TestWaitingDB_Put(t *testing.T) {
 }
 
 func TestWaitingDB_GetUnderHeightAndDelete(t *testing.T) {
-	db, err := NewWaitingDB("")
+	db, err := NewWaitingDB("", 100)
 	if err != nil {
 		t.Fatalf("Failed to new a db: %v", err)
 	}
@@ -100,7 +100,7 @@ func TestWaitingDB_GetUnderHeightAndDelete(t *testing.T) {
 }
 
 func TestWaitingDB_MarkVotedTx(t *testing.T) {
-	db, err := NewWaitingDB("")
+	db, err := NewWaitingDB("", 100)
 	if err != nil {
 		t.Fatalf("Failed to new a db: %v", err)
 	}
