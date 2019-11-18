@@ -70,7 +70,9 @@ func (signer *Signer) Signing() {
 			if err != nil {
 				switch err.(type) {
 				case client.PostErr:
-					signer.txchan <- item
+					go func() {
+						signer.txchan <- item
+					}()
 					log.Errorf("[Signer] post err and would retry after %d sec: %v", config.SleepTime, err)
 					<-time.Tick(time.Second * config.SleepTime)
 				default:

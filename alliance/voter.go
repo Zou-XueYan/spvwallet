@@ -81,7 +81,9 @@ func (v *Voter) Vote() {
 			if err != nil {
 				switch err.(type) {
 				case client.PostErr:
-					v.voting <- item
+					go func() {
+						v.voting <- item
+					}()
 					log.Errorf("failed to vote and post err: %v", err)
 					<-time.Tick(time.Second * config.SleepTime)
 				default:

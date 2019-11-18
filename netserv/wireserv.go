@@ -11,11 +11,6 @@ import (
 	"time"
 )
 
-const (
-	maxRequestedTxns  = wire.MaxInvPerMsg
-	maxFalsePositives = 7
-)
-
 // newPeerMsg signifies a newly connected peer to the block handler.
 type newPeerMsg struct {
 	peer *peerpkg.Peer
@@ -52,20 +47,9 @@ type heightAndTime struct {
 	timestamp time.Time
 }
 
-// txMsg packages a bitcoin tx message and the peer it came from together
-// so the handler has access to that information.
-type txMsg struct {
-	tx    *wire.MsgTx
-	peer  *peerpkg.Peer
-	reply chan struct{}
-}
-
-type updateFiltersMsg struct{}
-
 type WireServiceConfig struct {
 	Params *chaincfg.Params
 	Chain  *chain.Blockchain
-	//walletCreationDate time.Time
 	MinPeersForSync int
 }
 
@@ -83,12 +67,9 @@ type peerSyncState struct {
 type WireService struct {
 	params *chaincfg.Params
 	chain  *chain.Blockchain
-	//walletCreationDate time.Time
 	syncPeer   *peerpkg.Peer
 	peerStates map[*peerpkg.Peer]*peerSyncState
-	//requestedTxns      map[chainhash.Hash]heightAndTime
 	requestedBlocks map[chainhash.Hash]struct{}
-	//mempool            map[chainhash.Hash]struct{}
 	msgChan         chan interface{}
 	quit            chan struct{}
 	minPeersForSync int
@@ -99,12 +80,9 @@ func NewWireService(config *WireServiceConfig) *WireService {
 	return &WireService{
 		params: config.Params,
 		chain:  config.Chain,
-		//walletCreationDate: config.walletCreationDate,
 		minPeersForSync: config.MinPeersForSync,
 		peerStates:      make(map[*peerpkg.Peer]*peerSyncState),
-		//requestedTxns:      make(map[chainhash.Hash]heightAndTime),
 		requestedBlocks: make(map[chainhash.Hash]struct{}),
-		//mempool:            make(map[chainhash.Hash]struct{}),
 		msgChan: make(chan interface{}),
 	}
 }
@@ -123,15 +101,6 @@ func (ws *WireService) Start() {
 		log.Error(err)
 	}
 	log.Infof("Starting wire service at height %d", int(best.Height))
-	//go func() {
-	//	tick := time.NewTicker(30 * time.Second)
-	//	for {
-	//		select {
-	//		case <-tick.C:
-	//			log.Tracef("---------------wire heartbeat-------")
-	//		}
-	//	}
-	//}()
 out:
 	for {
 		select {
@@ -147,10 +116,6 @@ out:
 				ws.handleMerkleBlockMsg(&msg)
 			case invMsg:
 				ws.handleInvMsg(&msg)
-			//case txMsg:
-			//	ws.handleTxMsg(&msg)
-			//case updateFiltersMsg:
-			//	ws.handleUpdateFiltersMsg()
 			default:
 				log.Warnf("Unknown message type sent to WireService message chan: %T", msg)
 			}
@@ -180,7 +145,6 @@ func (ws *WireService) handleNewPeerMsg(peer *peerpkg.Peer) {
 		requestedTxns:   make(map[chainhash.Hash]heightAndTime),
 		requestedBlocks: make(map[chainhash.Hash]struct{}),
 	}
-	//ws.updateFilterAndSend(peer)
 
 	// If we don't have a sync peer and we are not current we should start a sync
 	if ws.syncPeer == nil && !ws.Current() {
@@ -203,10 +167,6 @@ func (ws *WireService) isSyncCandidate(peer *peerpkg.Peer) bool {
 		if err != nil {
 			return false
 		}
-		// just for test 192.168.203.102
-		//if host != "127.0.0.1" && host != "localhost" {
-		//	return false
-		//}
 	} else {
 		// The peer is not a candidate for sync if it's not a full node
 		nodeServices := peer.Services()
@@ -225,7 +185,6 @@ func (ws *WireService) startSync(syncPeer *peerpkg.Peer) {
 	if len(ws.peerStates) < ws.minPeersForSync {
 		return
 	}
-	//ws.Rebroadcast()
 	bestBlock, err := ws.chain.BestBlock()
 	if err != nil {
 		log.Error(err)
@@ -282,8 +241,6 @@ func (ws *WireService) startSync(syncPeer *peerpkg.Peer) {
 			log.Errorf("Failed to push getheaders msg: %v", err)
 			return
 		}
-
-		log.Tracef("-----------------sync peer is %s------------------", ws.syncPeer.String())
 	} else {
 		log.Warn("No sync candidates available")
 	}
