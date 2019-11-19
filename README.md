@@ -14,7 +14,7 @@ go build ./cmd/run.go
 
 ​	整个项目可以大体分为三部分：比特币网络交互、区块头数据维护和联盟链交互。网络交互部分实现了轻客户端和比特币网络之间的交互逻辑，包含节点的维护、消息的处理，能直接向区块头数据库提交数据，并处理分叉等常见问题；区块头数据库维护了所有区块头数据，维护了最长链，包括所有分叉链，通过BoltDB实现；联盟链交互部分实现了对BTC跨链交易的投票和签名。
 
-<img src="/Users/zou/go/src/github.com/ontio/spvclient/doc/arch.png"  />
+<img src="./doc/arch.png"  />
 
 ### 联盟链交互
 
@@ -36,7 +36,7 @@ go build ./cmd/run.go
 
 ​	下面介绍一下轻客户端对于区块头存储的具体策略。接收到的区块头大概可以分为五种情形，如下a-e，当然区块首先是合法的。
 
-![fork](/Users/zou/go/src/github.com/ontio/spvclient/doc/fork.png)
+![fork](./doc/fork.png)
 
 - **a.**：这是正常情况，DB中的best是指向最长链的指针，新的区块头是best的下一个合法区块，存储a并更新best。
 
