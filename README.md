@@ -14,7 +14,7 @@ go build ./cmd/run.go
 
 ​	整个项目可以大体分为三部分：比特币网络交互、区块头数据维护和联盟链交互。网络交互部分实现了轻客户端和比特币网络之间的交互逻辑，包含节点的维护、消息的处理，能直接向区块头数据库提交数据，并处理分叉等常见问题；区块头数据库维护了所有区块头数据，维护了最长链，包括所有分叉链，通过BoltDB实现；联盟链交互部分实现了对BTC跨链交易的投票和签名。
 
-![arch](https://github.com/zouxyan/spvclient/blob/nowallet/doc/arch.png)
+![arch](./doc/arch.png)
 
 ### 联盟链交互
 
