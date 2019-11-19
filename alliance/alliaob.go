@@ -47,7 +47,7 @@ func (ob *Observer) Listen() {
 	if top < alliaCheckPoints[ob.netType].Height {
 		top = alliaCheckPoints[ob.netType].Height
 	}
-	log.Infof("[AllianceObserver] get start height %d from checkpoint, check once %d seconds", top, ob.loopWaitTime)
+	log.Infof("[AllianceObserver] get start height %d from checkpoint or db, check once %d seconds", top, ob.loopWaitTime)
 	tick := time.NewTicker(time.Second * time.Duration(ob.loopWaitTime))
 	defer tick.Stop()
 

@@ -117,13 +117,7 @@ func (b *Blockchain) CommitHeader(header wire.BlockHeader) (bool, *StoredHeader,
 				log.Errorf("Error calculating common ancestor: %s", err.Error())
 				return newTip, commonAncestor, 0, err
 			}
-
-			if chash := commonAncestor.Header.BlockHash(); chash.IsEqual(&tipHash) { //TODO
-				commonAncestor = nil
-				log.Warnf("commonAncestor is our best %s, so make the new header %s our best", tipHash.String(), headerHash.String())
-			} else {
-				log.Warnf("REORG!!! REORG!!! REORG!!! At block %d, Wiped out %d blocks", int(bestHeader.Height), int(bestHeader.Height-commonAncestor.Height))
-			}
+			log.Warnf("REORG!!! REORG!!! REORG!!! At block %d, Wiped out %d blocks", int(bestHeader.Height), int(bestHeader.Height-commonAncestor.Height))
 		}
 	}
 

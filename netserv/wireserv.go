@@ -58,7 +58,6 @@ type WireServiceConfig struct {
 type peerSyncState struct {
 	syncCandidate   bool
 	requestQueue    []*wire.InvVect
-	requestedTxns   map[chainhash.Hash]heightAndTime
 	requestedBlocks map[chainhash.Hash]struct{}
 	falsePositives  uint32
 	blockScore      int32
@@ -142,7 +141,6 @@ func (ws *WireService) handleNewPeerMsg(peer *peerpkg.Peer) {
 	// Initialize the peer state
 	ws.peerStates[peer] = &peerSyncState{
 		syncCandidate:   ws.isSyncCandidate(peer),
-		requestedTxns:   make(map[chainhash.Hash]heightAndTime),
 		requestedBlocks: make(map[chainhash.Hash]struct{}),
 	}
 
@@ -237,9 +235,10 @@ func (ws *WireService) startSync(syncPeer *peerpkg.Peer) {
 		// start downloading merkle blocks so we learn of the wallet's transactions. We'll use a
 		// buffer of one week to make sure we don't miss anything.
 		log.Infof("Starting chain download from %s", bestPeer)
-		if err = bestPeer.PushGetHeadersMsg(locator, &ws.zeroHash); err != nil {
-			log.Errorf("Failed to push getheaders msg: %v", err)
-			return
+		if bestBlock.Header.Timestamp.Before(time.Now().UTC().Add(-time.Minute * 90)) {
+			bestPeer.PushGetHeadersMsg(locator, &ws.zeroHash)
+		} else {
+			bestPeer.PushGetBlocksMsg(locator, &ws.zeroHash)
 		}
 	} else {
 		log.Warn("No sync candidates available")
@@ -318,17 +317,24 @@ func (ws *WireService) handleHeadersMsg(hmsg *headersMsg) {
 		return
 	}
 
-	// Process each header we received. Make sure when check that each one is before our
-	// wallet creation date (minus the buffer). If we pass the creation date we will exit
-	// request merkle blocks from this point forward and exit the function.
+	// Process each header we received. Make sure when check that each one is 90 min before
+	// now. Prevent bifurcation.
 	badHeaders := 0
+	timePoint := time.Now().UTC().Add(-time.Minute * 90)
 	for _, blockHeader := range msg.Headers {
-		_, _, height, err := ws.chain.CommitHeader(*blockHeader)
-		if err != nil {
-			badHeaders++
-			log.Errorf("Commit header error: %s", err.Error())
+		if blockHeader.Timestamp.Before(timePoint) {
+			_, _, height, err := ws.chain.CommitHeader(*blockHeader)
+			if err != nil {
+				badHeaders++
+				log.Errorf("Commit header error: %s", err.Error())
+			}
+			log.Infof("Received header %s at height %d", blockHeader.BlockHash().String(), height)
+		} else {
+			log.Infof("Switching to downloading merkle blocks at block %s", blockHeader.BlockHash().String())
+			locator := ws.chain.GetBlockLocator()
+			peer.PushGetBlocksMsg(locator, &ws.zeroHash)
+			return
 		}
-		log.Infof("Received header %s at height %d", blockHeader.BlockHash().String(), height)
 	}
 	// Usually the peer will send the header at the tip of the chain in each batch. This will trigger
 	// one commit error so we'll consider that acceptable, but anything more than that suggests misbehavior
@@ -389,13 +395,6 @@ func (ws *WireService) handleMerkleBlockMsg(bmsg *merkleBlockMsg) {
 	delete(state.requestedBlocks, blockHash)
 	delete(ws.requestedBlocks, blockHash)
 
-	//_, err := chain.CheckMBlock(merkleBlock)
-	//if err != nil {
-	//	log.Warnf("Peer %s sent an invalid MerkleBlock", peer)
-	//	peer.Disconnect()
-	//	return
-	//}
-
 	newBlock, _, newHeight, err := ws.chain.CommitHeader(header)
 	// If this is an orphan block which doesn't connect to the chain, it's possible
 	// that we might be synced on the longest chain, but not the most-work chain like
@@ -441,22 +440,6 @@ func (ws *WireService) handleMerkleBlockMsg(bmsg *merkleBlockMsg) {
 	best, _ := ws.chain.BestBlock()
 	log.Infof("Received merkle block %s at height %d---best: %s, %d, work:%s", blockHash.String(), newHeight,
 		best.Header.BlockHash().String(), best.Height, best.GetTotalWork().String())
-
-	// Check reorg
-	//if reorg != nil && ws.Current() {
-	//	//err = ws.chain.db.Put(*reorg, true)
-	//	if err != nil {
-	//		log.Error(err)
-	//	}
-	//
-	//	// Clear request state for new sync
-	//	state.requestQueue = []*wire.InvVect{}
-	//	state.requestedBlocks = make(map[chainhash.Hash]struct{})
-	//	ws.requestedBlocks = make(map[chainhash.Hash]struct{})
-	//}
-
-	// Clear mempool
-	//ws.mempool = make(map[chainhash.Hash]struct{})
 
 	// If we're not current and we've downloaded everything we've requested send another getblocks message.
 	// Otherwise we'll request the next block in the queue.
@@ -523,13 +506,7 @@ func (ws *WireService) handleInvMsg(imsg *invMsg) {
 
 	// Request the advertised inventory if we don't already have it
 	gdmsg := wire.NewMsgGetData()
-	//numRequested := 0
-	shouldSendGetData := false
-	if len(state.requestQueue) == 0 {
-		shouldSendGetData = true
-	}
 	for _, iv := range invVects {
-
 		// Add the inventory to the cache of known inventory
 		// for the peer.
 		peer.AddKnownInventory(iv)
@@ -551,28 +528,17 @@ func (ws *WireService) handleInvMsg(imsg *invMsg) {
 			// one at a time. Sadly we can't batch these because the remote
 			// peer  will not update the bloom filter until he's done processing
 			// the batch which means we will have a super high false positive rate.
-			if _, exists := ws.requestedBlocks[iv.Hash]; (!ws.Current() && !exists && !haveInv && shouldSendGetData) || ws.Current() {
+			if _, exists := ws.requestedBlocks[iv.Hash]; (!ws.Current() && !exists && !haveInv) || ws.Current() {
 				iv.Type = wire.InvTypeFilteredBlock
 				state.requestQueue = append(state.requestQueue, iv)
 			}
-		case wire.InvTypeTx:
-			// Transaction inventory can be requested in batches
-			//if _, exists := ws.requestedTxns[iv.Hash]; !exists && numRequested < wire.MaxInvPerMsg && !haveInv {
-			//	ws.requestedTxns[iv.Hash] = heightAndTime{0, time.Now()} // unconfirmed tx
-			//	limitMap(ws.requestedTxns, maxRequestedTxns)
-			//	state.requestedTxns[iv.Hash] = heightAndTime{0, time.Now()}
-			//
-			//	gdmsg.AddInvVect(iv)
-			//	numRequested++
-			//}
-			fallthrough
 		default:
 			continue
 		}
 	}
 
 	// Pop the first block off the queue and request it
-	if len(state.requestQueue) > 0 && (shouldSendGetData || ws.Current()) {
+	if len(state.requestQueue) > 0 {
 		iv := state.requestQueue[0]
 		gdmsg.AddInvVect(iv)
 		if len(state.requestQueue) > 1 {

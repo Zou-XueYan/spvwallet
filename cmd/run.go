@@ -189,65 +189,67 @@ func resyncSpv(wallet *spvclient.SPVWallet, dura int) {
 	td := time.Duration(dura) * time.Minute
 	timer := time.NewTimer(td)
 	for {
-		<-timer.C
-		sh, err = wallet.Blockchain.BestBlock()
-		if err != nil {
-			log.Fatalf("Failed to get best block: %v", err)
-			continue
-		}
-		if lasth >= sh.Height {
-			isrb := false
-			log.Debugf("Restart now")
-			//if isVote {
-			//	log.Debugf("stop voter")
-			//	voter.Stop()
-			//}
-			//if restServer != nil {
-			//	log.Debugf("stop rest service")
-			//	restServer.Stop()
-			//}
+		select {
+		case <-timer.C:
+			sh, err = wallet.Blockchain.BestBlock()
+			if err != nil {
+				log.Fatalf("Failed to get best block: %v", err)
+				continue
+			}
+			if lasth >= sh.Height {
+				isrb := false
+				log.Debugf("Restart now")
+				//if isVote {
+				//	log.Debugf("stop voter")
+				//	voter.Stop()
+				//}
+				//if restServer != nil {
+				//	log.Debugf("stop rest service")
+				//	restServer.Stop()
+				//}
 
-			if again {
-				log.Debugf("It happened TWICE")
-				err = wallet.Blockchain.Rollback(sh.Header.Timestamp.Add(-6 * time.Hour))
-				if err != nil {
-					log.Fatalf("Failed to rollback: %v", err)
-					continue
+				if again {
+					log.Debugf("It happened TWICE")
+					err = wallet.Blockchain.Rollback(sh.Header.Timestamp.Add(-180 * time.Minute))
+					if err != nil {
+						log.Fatalf("Failed to rollback: %v", err)
+						continue
+					}
+					isrb = true
+					//_ = os.RemoveAll(path.Join(config.RepoPath, "peers.json"))
 				}
-				isrb = true
-				//_ = os.RemoveAll(path.Join(config.RepoPath, "peers.json"))
-			}
 
-			wallet.ReSync()
-			//wallet.Close()
-			//
-			//wallet, _ = spvclient.NewSPVWallet(config)
-			//wallet.Start()
+				wallet.ReSync()
+				//wallet.Close()
+				//
+				//wallet, _ = spvclient.NewSPVWallet(config)
+				//wallet.Start()
 
-			//if ctx.GlobalInt(spvclient.RunRest.Name) == 1 {
-			//	restServer, err = startServer(ctx, wallet)
-			//	if err != nil {
-			//		log.Fatalf("Failed to restart rest service: %v", err)
-			//		continue
-			//	}
-			//}
+				//if ctx.GlobalInt(spvclient.RunRest.Name) == 1 {
+				//	restServer, err = startServer(ctx, wallet)
+				//	if err != nil {
+				//		log.Fatalf("Failed to restart rest service: %v", err)
+				//		continue
+				//	}
+				//}
 
-			//if isVote {
-			//	voter.Restart(wallet)
-			//}
+				//if isVote {
+				//	voter.Restart(wallet)
+				//}
 
-			log.Info("The block header is not updated for a long time. Restart the service")
-			if isrb {
-				again = false
+				log.Info("The block header is not updated for a long time. Restart the service")
+				if isrb {
+					again = false
+				} else {
+					again = true
+				}
+				timer.Reset(td / 2)
 			} else {
-				again = true
+				again = false
+				timer.Reset(td)
 			}
-			timer.Reset(td / 2)
-		} else {
-			again = false
-			timer.Reset(td)
+			lasth = sh.Height
 		}
-		lasth = sh.Height
 	}
 }
 
