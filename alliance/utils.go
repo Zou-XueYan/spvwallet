@@ -8,6 +8,7 @@ import (
 	"github.com/ontio/multi-chain/common"
 	"github.com/ontio/multi-chain/common/password"
 	"github.com/ontio/multi-chain/native/service/cross_chain_manager/btc"
+	"time"
 )
 
 const (
@@ -78,4 +79,10 @@ func (err LessConfirmationError) Error() string {
 
 func (err *LessConfirmationError) String() string {
 	return err.Err.Error()
+}
+
+func wait(dura time.Duration) {
+	t := time.NewTimer(dura)
+	<-t.C
+	t.Stop()
 }

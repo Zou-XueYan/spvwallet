@@ -42,11 +42,6 @@ type invMsg struct {
 	peer *peerpkg.Peer
 }
 
-type heightAndTime struct {
-	height    uint32
-	timestamp time.Time
-}
-
 type WireServiceConfig struct {
 	Params *chaincfg.Params
 	Chain  *chain.Blockchain
@@ -573,40 +568,8 @@ func (ws *WireService) haveInventory(invVect *wire.InvVect) (bool, error) {
 			return false, nil
 		}
 		return true, nil
-		// Is transaction already in mempool
 	}
 	// The requested inventory is is an unsupported type, so just claim
 	// it is known to avoid requesting it.
 	return true, nil
-}
-
-// limitMap is a helper function for maps that require a maximum limit by
-// evicting a random transaction if adding a new value would cause it to
-// overflow the maximum allowed.
-func limitMap(i interface{}, limit int) {
-	m, ok := i.(map[chainhash.Hash]struct{})
-	if ok {
-		if len(m)+1 > limit {
-			// Remove a random entry from the map.  For most compilers, Go's
-			// range statement iterates starting at a random item although
-			// that is not 100% guaranteed by the spec.  The iteration order
-			// is not important here because an adversary would have to be
-			// able to pull off preimage attacks on the hashing function in
-			// order to target eviction of specific entries anyways.
-			for txHash := range m {
-				delete(m, txHash)
-				return
-			}
-		}
-		return
-	}
-	n, ok := i.(map[chainhash.Hash]uint32)
-	if ok {
-		if len(n)+1 > limit {
-			for txHash := range n {
-				delete(n, txHash)
-				return
-			}
-		}
-	}
 }

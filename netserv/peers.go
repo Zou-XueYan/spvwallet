@@ -29,8 +29,6 @@ var (
 	defaultPort uint16
 )
 
-const MaxGetAddressAttempts = 10
-
 var SFNodeBitcoinCash wire.ServiceFlag = 1 << 5
 
 type PeerManagerConfig struct {
@@ -150,7 +148,6 @@ func NewPeerManager(config *PeerManagerConfig) (*PeerManager, error) {
 	listeners.OnHeaders = pm.onHeaders
 	listeners.OnMerkleBlock = pm.onMerkleBlock
 	listeners.OnInv = pm.onInv
-	//listeners.OnTx = pm.onTx
 	listeners.OnReject = pm.onReject
 
 	pm.peerConfig = &peer.Config{
@@ -190,7 +187,6 @@ func (pm *PeerManager) onConnection(req *connmgr.ConnReq, conn net.Conn) {
 
 	// Associate the connection with the peer
 	p.AssociateConnection(conn)
-
 	pm.connectedPeers[req.ID()] = p
 
 	// Tell the addr service we made a connection
@@ -337,7 +333,6 @@ func (pm *PeerManager) getMoreAddresses() {
 			pm.queryDNSSeeds()
 		}
 	}
-
 }
 
 func (pm *PeerManager) onAddr(p *peer.Peer, msg *wire.MsgAddr) {
@@ -361,12 +356,6 @@ func (pm *PeerManager) onInv(p *peer.Peer, msg *wire.MsgInv) {
 		pm.msgChan <- invMsg{msg, p}
 	}
 }
-
-//func (pm *PeerManager) onTx(p *peer.Peer, msg *wire.MsgTx) {
-//	if pm.msgChan != nil {
-//		pm.msgChan <- txMsg{msg, p, nil}
-//	}
-//}
 
 func (pm *PeerManager) onReject(p *peer.Peer, msg *wire.MsgReject) {
 	log.Warnf("Received reject message from peer %d: Code: %s, Hash %s, Reason: %s", int(p.ID()), msg.Code.String(), msg.Hash.String(), msg.Reason)

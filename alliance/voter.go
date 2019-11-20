@@ -85,7 +85,7 @@ func (v *Voter) Vote() {
 						v.voting <- item
 					}()
 					log.Errorf("failed to vote and post err: %v", err)
-					<-time.Tick(time.Second * config.SleepTime)
+					wait(time.Second * config.SleepTime)
 				default:
 					log.Errorf("[Voter] invokeNativeContract error: %v", err)
 				}

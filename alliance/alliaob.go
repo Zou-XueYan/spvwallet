@@ -59,7 +59,7 @@ func (ob *Observer) Listen() {
 			newTop, err := ob.allia.GetCurrentBlockHeight()
 			if err != nil {
 				log.Errorf("[Observer] failed to get current height, retry after 10 sec: %v", err)
-				<-time.Tick(time.Second * config.SleepTime)
+				wait(time.Second * config.SleepTime)
 				continue
 			}
 
@@ -76,7 +76,7 @@ func (ob *Observer) Listen() {
 					default:
 						log.Errorf("[Observer] not supposed to happen: %v", err)
 					}
-					<-time.Tick(time.Second * config.SleepTime)
+					wait(time.Second * config.SleepTime)
 					continue
 				}
 				voteCnt, signCnt := ob.checkEvents(events, h)

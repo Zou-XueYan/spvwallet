@@ -74,7 +74,7 @@ func (signer *Signer) Signing() {
 						signer.txchan <- item
 					}()
 					log.Errorf("[Signer] post err and would retry after %d sec: %v", config.SleepTime, err)
-					<-time.Tick(time.Second * config.SleepTime)
+					wait(time.Second * config.SleepTime)
 				default:
 					log.Errorf("[Signer] failed to invoke alliance: %v", err)
 				}
